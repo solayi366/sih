@@ -1,0 +1,96 @@
+<?php session_start(); ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - SIH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3',
+                            500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 900: '#4c0519',
+                        }
+                    },
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .ruby-gradient { background: radial-gradient(circle at top left, #e11d48 0%, #4c0519 100%); }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="ruby-gradient min-h-screen flex items-center justify-center p-4 antialiased font-sans">
+
+    <div class="w-full max-w-[440px] glass-card rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden border border-white/20">
+        
+        <div class="pt-12 pb-8 px-10 text-center">
+            <div class="inline-flex p-4 bg-brand-50 rounded-3xl mb-6 shadow-sm border border-brand-100 group">
+                <img src="../assets/logo.png" alt="Logo" class="h-10 w-auto group-hover:scale-110 transition-transform duration-500">
+            </div>
+            <h2 class="text-3xl font-black text-slate-900 tracking-tight mb-2">Bienvenido <span class="text-brand-600">SIH</span></h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Sistema de Identificación de Hardware</p>
+        </div>
+
+        <div class="px-10 pb-12">
+            <?php if (isset($_SESSION['error'])): ?>
+            <div class="mb-6 p-4 bg-rose-50 border-l-4 border-brand-600 rounded-xl flex items-center gap-3 animate-pulse">
+                <i class="fas fa-exclamation-circle text-brand-600"></i>
+                <p class="text-xs font-bold text-brand-900"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></p>
+            </div>
+            <?php endif; ?>
+
+            <form action="../controllers/login_process.php" method="POST" class="space-y-5">
+                <div class="space-y-2 group">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors group-focus-within:text-brand-600">Identificador</label>
+                    <div class="relative">
+                        <input type="text" name="username" required 
+                               placeholder="Nombre de usuario"
+                               class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-12 py-4 text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm">
+                        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <div class="space-y-2 group">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors group-focus-within:text-brand-600">Contraseña</label>
+                    <div class="relative">
+                        <input type="password" name="password" required 
+                               placeholder="••••••••"
+                               class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-12 py-4 text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm">
+                        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" 
+                            class="w-full py-5 bg-gradient-to-br from-brand-600 to-rose-700 text-white rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl shadow-brand-500/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3">
+                        <span>Ingresar al Sistema</span>
+                        <i class="fas fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-10 pt-8 border-t border-slate-100 text-center">
+                <a href="../index.php" class="text-[10px] font-black text-slate-400 hover:text-brand-600 uppercase tracking-widest transition-all inline-flex items-center gap-2">
+                    <i class="fas fa-home"></i>
+                    Volver a la vista pública
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 p-8 opacity-20 pointer-events-none">
+        <span class="text-white font-black text-6xl tracking-tighter uppercase select-none">SIH_QR</span>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Desactivar la lectura de directorios
+Options -Indexes
+
+# Proteger archivos de configuración
+<FilesMatch "\.(php|ini|log|env)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Permitir acceso solo a los scripts necesarios en el futuro
+<Files "index.php">
+    Allow from all
+</Files>
