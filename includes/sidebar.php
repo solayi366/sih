@@ -24,7 +24,7 @@ function isActive($page, $current_page) {
     <div class="h-16 md:h-20 flex items-center justify-center border-b border-slate-100 shrink-0">
         <a href="dashboard.php" class="flex items-center gap-3 px-4">
             <div class="p-1.5 bg-brand-50 rounded-lg shrink-0">
-                <img src="../static/logo.png" alt="Logo" class="h-8 w-8 object-contain">
+                <img src="../assets/logo.png" alt="Logo" class="h-8 w-8 object-contain">
             </div>
             <span class="logo-text font-black text-xl tracking-tighter uppercase text-slate-900">
                 SIH<span class="text-brand-600">QR</span>
@@ -54,7 +54,7 @@ function isActive($page, $current_page) {
             <span class="sidebar-text ml-3">Nuevo Activo</span>
         </a>
 
-        <a href="parametros.php" class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('parametros.php', $current_page); ?>">
+        <a href="parametros_hardware.php" class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('parametros.php', $current_page); ?>">
             <i class="fas fa-sliders-h nav-icon w-6 text-center"></i>
             <span class="sidebar-text ml-3">Parámetros</span>
         </a>
