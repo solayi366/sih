@@ -18,3 +18,8 @@ ALTER TABLE tab_novedades ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE;
 ALTER TABLE tab_novedades ALTER COLUMN fecha_reporte SET DEFAULT CURRENT_TIMESTAMP;
 -- Aseguramos un estado inicial por defecto
 ALTER TABLE tab_novedades ALTER COLUMN estado_ticket SET DEFAULT 'ABIERTO';
+
+--009.
+ALTER TABLE tab_marca ADD COLUMN id_tipoequi INTEGER;
+--0010.
+ALTER TABLE tab_marca ADD CONSTRAINT fk_marca_tipo FOREIGN KEY (id_tipoequi) REFERENCES tab_tipos(id_tipoequi);
