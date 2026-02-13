@@ -41,8 +41,7 @@ $data = ParametrosController::getHardwareData();
                             <i class="fas fa-tags text-brand-500"></i> Tipos de Equipo
                         </div>
                         <div class="p-6">
-                            <form action="../controllers/process_parametro.php?view=hw&ent=tipo" method="POST" class="flex gap-2 mb-6">
-                                <input type="text" name="nom_tipo" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-brand-600" placeholder="Nuevo Tipo" required>
+                           <form action="../controllers/parametrosController.php?view=hw&ent=tipo" method="POST" class="flex gap-2 mb-6">                                <input type="text" name="nom_tipo" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-brand-600" placeholder="Nuevo Tipo" required>
                                 <button type="submit" class="bg-brand-600 text-white px-4 rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-100"><i class="fas fa-plus"></i></button>
                             </form>
                             <table class="w-full text-left">
@@ -65,7 +64,7 @@ $data = ParametrosController::getHardwareData();
                             <i class="fas fa-copyright text-brand-500"></i> Marcas registradas
                         </div>
                         <div class="p-6">
-                            <form action="../controllers/process_parametro.php?view=hw&ent=marca" method="POST" class="flex gap-2 mb-6">
+                           <form action="../controllers/parametrosController.php?view=hw&ent=tipo" method="POST" class="flex gap-2 mb-6">                                <input type="text" name="nom_tipo" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-brand-600" placeholder="Nuevo Tipo" required>
                                 <input type="text" name="nom_marca" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-brand-600" placeholder="Nueva Marca" required>
                                 <button type="submit" class="bg-brand-600 text-white px-4 rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-100"><i class="fas fa-plus"></i></button>
                             </form>

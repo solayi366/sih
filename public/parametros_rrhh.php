@@ -40,8 +40,7 @@ $data = ParametrosController::getRRHHData();
                         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div class="bg-slate-900 text-white p-4 text-[10px] font-black uppercase tracking-widest">Unidades de Negocio</div>
                             <div class="p-6">
-                                <form action="../controllers/process_parametro.php?view=rrhh&ent=area" method="POST" class="flex gap-2 mb-6">
-                                    <input type="text" name="nom_area" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-brand-600" placeholder="Nueva Área" required>
+<form action="../controllers/parametrosController.php?view=rrhh&ent=empleado" method="POST" class="... ">                                    <input type="text" name="nom_area" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-brand-600" placeholder="Nueva Área" required>
                                     <button type="submit" class="bg-brand-600 text-white px-4 rounded-xl shadow-lg transition-all"><i class="fas fa-plus"></i></button>
                                 </form>
                                 <table class="w-full">
@@ -64,8 +63,7 @@ $data = ParametrosController::getRRHHData();
                                 <span class="text-xs font-black uppercase tracking-widest"><i class="fas fa-id-card text-brand-500 mr-2"></i>Custodios de Activos</span>
                             </div>
                             <div class="p-8">
-                                <form action="../controllers/process_parametro.php?view=rrhh&ent=empleado" method="POST" class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<form action="../controllers/parametrosController.php?view=rrhh&ent=empleado" method="POST" class="... ">                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div><label class="text-[9px] font-black text-slate-400 uppercase mb-2 block">Cédula</label>
                                              <input type="text" name="cod_nom" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-brand-600" required></div>
                                         <div><label class="text-[9px] font-black text-slate-400 uppercase mb-2 block">Nombre Completo</label>
