@@ -1,0 +1,165 @@
+<?php
+require_once '../controllers/parametrosController.php';
+$tipos = ParametrosController::getTipos();
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tipos de Equipo | SIH_QR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="../assets/css/custom_sidebar.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { brand: { 50: '#fff1f2', 600: '#e11d48', 700: '#be123c' } },
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden">
+
+    <?php include '../includes/sidebar.php'; ?>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50/50 w-full">
+        
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth w-full">
+            <div class="max-w-[1200px] mx-auto">
+                
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Tipos de Equipo</h1>
+                        <p class="text-slate-500 font-medium mt-1">Gestión de categorías maestras.</p>
+                    </div>
+                    <button onclick="abrirModal('modalCrear')" 
+                            class="red-gradient text-white px-8 py-3 rounded-2xl font-black text-xs  tracking-widest shadow-xl hover:scale-105 transition-all flex items-center gap-3">
+                        <i class="fas fa-plus"></i> Añadir Tipo
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/50 border-b border-slate-200 text-xs font-bold text-slate-500  tracking-wider">
+                                <th class="px-6 py-4"># ID</th>
+                                <th class="px-6 py-4">Nombre de Categoría</th>
+                                <th class="px-6 py-4 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <?php foreach ($tipos as $t): ?>
+                            <tr class="hover:bg-brand-50/20 transition-colors">
+                                <td class="px-6 py-4 font-mono text-[10px] text-brand-600">#<?= str_pad($t['r_id'], 3, '0', STR_PAD_LEFT) ?></td>
+                                <td class="px-6 py-4 text-slate-700 font-bold "><?= $t['r_nombre'] ?></td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button onclick="abrirEdicion(<?= $t['r_id'] ?>, '<?= $t['r_nombre'] ?>')" 
+                                                class="text-slate-400 hover:text-brand-600 transition-colors">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+<button onclick="Alerts.confirmDelete('../controllers/parametrosController.php?ent=tipo&action=delete&id=<?= $t['r_id'] ?>')" 
+        class="text-slate-400 hover:text-rose-600 transition-colors">
+    <i class="fas fa-trash"></i>
+</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Crear -->
+    <div id="modalCrear" class="modal-overlay hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="modal-container bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <!-- Header -->
+            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between">
+                <h3 class="text-white text-xs font-black  tracking-widest">Registrar Nuevo Tipo</h3>
+                <button type="button" onclick="cerrarModal('modalCrear')" class="text-white/50 hover:text-white transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form action="../controllers/parametrosController.php?ent=tipo&action=create" method="POST">
+                <div class="p-8 space-y-4">
+                    <label class="block text-xs font-bold text-slate-600  tracking-wide mb-2">Nombre del Dispositivo</label>
+                    <input type="text" 
+                           name="nom_tipo" 
+                           placeholder="Ej: Laptop, Servidor..." 
+                           required
+                           class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-semibold focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-50 transition-all">
+                </div>
+                
+                <!-- Footer -->
+                <div class="bg-slate-50 px-6 py-4 flex gap-3">
+                    <button type="button" 
+                            onclick="cerrarModal('modalCrear')"
+                            class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-700 text-white text-sm font-black  rounded-xl hover:shadow-lg hover:scale-105 transition-all">
+                        Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edición -->
+    <div id="modalEdicion" class="modal-overlay hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="modal-container bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <!-- Header -->
+            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between">
+                <h3 class="text-white text-xs font-black  tracking-widest">Actualizar Categoría</h3>
+                <button type="button" onclick="cerrarModal('modalEdicion')" class="text-white/50 hover:text-white transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Form -->
+            <form action="../controllers/parametrosController.php?ent=tipo&action=update" method="POST">
+                <input type="hidden" name="id_tipo" id="edit_id">
+                <div class="p-8 space-y-4">
+                    <label class="block text-xs font-bold text-slate-600  tracking-wide mb-2">Modificar Nombre</label>
+                    <input type="text" 
+                           name="nom_tipo" 
+                           id="edit_nombre"
+                           required
+                           class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-semibold focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-50 transition-all">
+                </div>
+                
+                <!-- Footer -->
+                <div class="bg-slate-50 px-6 py-4 flex gap-3">
+                    <button type="button" 
+                            onclick="cerrarModal('modalEdicion')"
+                            class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                        Cerrar
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-700 text-white text-sm font-black  rounded-xl hover:shadow-lg hover:scale-105 transition-all">
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../assets/js/sidebar_logic.js"></script>
+    <script src="../assets/js/alerts.js"></script>
+    <script src="../assets/js/utils.js"> </script>
+</body>
+</html>

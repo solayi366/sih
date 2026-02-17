@@ -1,21 +1,65 @@
 /* Estilo Ruby exacto del Formulario de Creación */
-.red-gradient { background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); }
+.red-gradient {
+    background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
+}
 
 .input-group-ruby {
-    display: flex; align-items: stretch; border: 2px solid #cbd5e1; border-radius: 0.75rem;
-    overflow: hidden; transition: all 0.3s; 
+    display: flex;
+    align-items: stretch;
+    border: 2px solid #cbd5e1;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: all 0.3s;
     background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .input-group-ruby:focus-within {
     border-color: #e11d48;
-    box-shadow: 0 0 0 4px rgba(255,241,242,1), 0 4px 12px rgba(225,29,72,0.1);
+    box-shadow: 0 0 0 4px rgba(255, 241, 242, 1), 0 4px 12px rgba(225, 29, 72, 0.1);
     background: linear-gradient(to bottom, #ffffff 0%, #fff1f2 100%);
 }
 
 .input-icon-box {
-    display: flex; align-items: center; justify-content: center; width: 3rem; 
-    border-right: 2px solid #e2e8f0; color: #94a3b8; transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    border-right: 2px solid #e2e8f0;
+    color: #94a3b8;
+    transition: all 0.3s;
     background: linear-gradient(to right, #f1f5f9, #f8fafc);
+}
+
+
+body {
+    background-color: #f8fafc;
+}
+
+/* Modal styles */
+.modal-overlay {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+}
+
+.modal-container {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.modal-overlay.hidden .modal-container {
+    transform: scale(0.95);
+    opacity: 0;
+}
+
+.modal-overlay:not(.hidden) .modal-container {
+    transform: scale(1);
+    opacity: 1;
 }

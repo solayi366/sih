@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION fun_read_marcas()
 RETURNS TABLE (
     r_id tab_marca.id_marca%TYPE, 

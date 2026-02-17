@@ -1,0 +1,46 @@
+/* Animación de entrada suave */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.ruby-toast {
+    background: rgba(15, 23, 42, 0.9); /* Slate 900 con transparencia */
+    backdrop-filter: blur(8px);
+    border-left: 4px solid #e11d48; /* El Rojo Ruby sagrado */
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+    animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 320px;
+}
+
+.ruby-toast.success { border-left-color: #10b981; } /* Esmeralda para éxito */
+.ruby-toast.danger { border-left-color: #e11d48; }  /* Ruby para error */
+
+.toast-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.toast-success-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.toast-danger-icon { background: rgba(225, 29, 72, 0.1); color: #e11d48; }
+
+.swal2-popup {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.swal2-confirm {
+    background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%) !important;
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3) !important;
+}
+
+.swal2-cancel {
+    border: 2px solid #e2e8f0 !important;
+    color: #64748b !important;
+    background: white !important;
+}
