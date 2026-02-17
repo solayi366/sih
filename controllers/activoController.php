@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/../core/database.php';
-require_once __DIR__ . '/../vendor/SimpleXLSX.php';
+require_once __DIR__ . '/../vendor/SimpleXLSX.php'; // Asegúrate de haber creado este archivo
 
 class ActivoController {
     
+    // Trae datos para selectores
     public static function getFormData() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $db = Database::conectar();
@@ -17,57 +18,56 @@ class ActivoController {
     }
 
     /**
-     * ANALIZADOR DE EXCEL POR COORDENADAS (Gama Alta)
-     * Basado exactamente en el archivo: HOJA DE VIDA 06TAB13 PT JOSE LUIS.xlsx
+     * ANALIZADOR DE EXCEL DE PRECISIÓN (Gama Alta)
+     * Basado en la estructura de tu Hoja de Vida real
      */
     public static function analizarExcel($fileTmp) {
         if ($xlsx = SimpleXLSX::parse($fileTmp)) {
-            $rows = $xlsx->rows();
+            $rows = $xlsx->rows(); // Convierte el Excel en un array 0-indexed
 
-            // Mapeo exacto basado en el formato visual (rows[fila-1][columna_index])
-            // Columna A=0, B=1, C=2, D=3, E=4...
-            $tipoRaw       = $rows[10][1] ?? ''; // Fila 11, Col B
-            $marcaRaw      = $rows[11][1] ?? ''; // Fila 12, Col B
-            $refRaw        = $rows[13][1] ?? ''; // Fila 14, Col B
-            $serialRaw     = $rows[14][1] ?? ''; // Fila 15, Col B
-            $ipRaw         = $rows[17][1] ?? ''; // Fila 18, Col B
-            $macRaw        = $rows[18][1] ?? ''; // Fila 19, Col B
-            $responsableRaw = $rows[23][1] ?? ''; // Fila 24, Col B (JOSE LUIS GARAVITO - S12810)
+            // Mapeo por coordenadas (Fila - 1 porque el array empieza en 0)
+            // Celda B11 -> rows[10][1]
+            $tipoRaw   = $rows[10][1] ?? '';
+            $marcaRaw  = $rows[11][1] ?? '';
+            $refRaw    = $rows[12][1] ?? '';
+            $serialRaw = $rows[14][1] ?? '';
+            $ipRaw     = $rows[17][1] ?? '';
+            $macRaw    = $rows[18][1] ?? '';
+            $respRaw   = $rows[23][1] ?? ''; // "JOSE LUIS GARAVITO - S12810"
 
-            // Extraer solo el código del responsable (ej. S12810)
-            $parts = explode(' - ', $responsableRaw);
+            // Extraer solo la cédula del final del responsable
+            $parts = explode(' - ', $respRaw);
             $cedula = (count($parts) > 1) ? trim(end($parts)) : '';
 
             $data = [
                 'success' => true,
                 'principal' => [
-                    'tipo'       => trim($tipoRaw),
-                    'marca'      => trim($marcaRaw),
-                    'referencia' => trim($refRaw),
-                    'serial'     => trim($serialRaw),
-                    'ip'         => trim($ipRaw),
-                    'mac'        => trim($macRaw),
+                    'tipo'       => $tipoRaw,
+                    'marca'      => $marcaRaw,
+                    'referencia' => $refRaw,
+                    'serial'     => $serialRaw,
+                    'ip'         => $ipRaw,
+                    'mac'        => $macRaw,
                     'responsable'=> $cedula
                 ],
                 'accesorios' => []
             ];
 
-            // --- SECCIÓN ACCESORIOS (Panel Derecho) ---
-            // LECTOR: Marca en E12, Ref en E13, Serie en E14
-            if (!empty($rows[13][4]) && $rows[13][4] !== 'N.A') {
+            // Detección de Accesorios (Panel Derecho: Columnas D y E)
+            // Lector (E14)
+            if (!empty($rows[13][4])) {
                 $data['accesorios'][] = [
                     'tipo'   => 'LECTOR',
-                    'serial' => trim($rows[13][4]), // E14
-                    'ref'    => trim($rows[12][4])  // E13
+                    'serial' => $rows[13][4],
+                    'ref'    => $rows[12][4] ?? ''
                 ];
             }
-
-            // BASE LECTOR: Marca en E18, Ref en E19, Serie en E20
-            if (!empty($rows[19][4]) && $rows[19][4] !== 'N.A') {
+            // Base Lector (E19)
+            if (!empty($rows[18][4]) && $rows[18][4] !== 'N.A') {
                 $data['accesorios'][] = [
                     'tipo'   => 'BASE LECTOR',
-                    'serial' => trim($rows[19][4]), // E20
-                    'ref'    => trim($rows[18][4])  // E19
+                    'serial' => $rows[18][4],
+                    'ref'    => $rows[17][4] ?? ''
                 ];
             }
 
@@ -77,6 +77,7 @@ class ActivoController {
         }
     }
 
+    // Guardado Masivo Transaccional
     public static function store($postData) {
         try {
             $db = Database::conectar();
@@ -84,7 +85,7 @@ class ActivoController {
 
             $cod = $postData['cod_responsable'];
             
-            // 1. Si el empleado es nuevo, se crea en la tabla tab_empleados
+            // 1. Si el empleado es nuevo, crearlo
             if (!empty($postData['nom_nuevo_empleado'])) {
                 $stmtE = $db->prepare("SELECT * FROM fun_create_empleado(:c, :n, :a)");
                 $stmtE->execute([':c' => $cod, ':n' => $postData['nom_nuevo_empleado'], ':a' => $postData['id_area_nuevo']]);
@@ -112,7 +113,7 @@ class ActivoController {
             $resP = $stmtA->fetch();
             $id_padre = $resP['id_res'];
 
-            // 3. Crear Accesorios desde el JSON
+            // 3. Procesar Accesorios del JSON
             if (!empty($postData['accesorios_json_final']) && $id_padre > 0) {
                 $accs = json_decode($postData['accesorios_json_final'], true);
                 foreach ($accs as $a) {
@@ -139,7 +140,7 @@ class ActivoController {
     }
 }
 
-// ROUTER (IMPORTANTE: Esto debe estar FUERA de la clase y BIEN ESTRUCTURADO)
+// Router
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_GET['action']) && $_GET['action'] == 'analizar') {
         header('Content-Type: application/json');
