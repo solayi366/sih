@@ -105,9 +105,9 @@ $data = ActivoController::getFormData();
                         <div id="grupo-redes" class="bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm" style="display:none;">
                             <h3 class="label-ruby !text-brand-600 mb-6"><i class="fas fa-network-wired"></i> Red y Conectividad</h3>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div id="grupo-hostname"><label class="label-ruby">Hostname</label><input type="text" name="hostname" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none"></div>
-                                <div><label class="label-ruby">IP</label><input type="text" name="ip_equipo" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none" placeholder="0.0.0.0"></div>
-                                <div><label class="label-ruby">MAC</label><input type="text" name="mac_activo" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none" placeholder="00:00:00..."></div>
+                                <div id="grupo-hostname"><label class="label-ruby">Hostname</label><input type="text" id="input-hostname" name="hostname" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none"></div>
+                                <div><label class="label-ruby">IP</label><input type="text" id="input-ip" name="ip_equipo" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none" placeholder="0.0.0.0"></div>
+                                <div><label class="label-ruby">MAC</label><input type="text" id="input-mac" name="mac_activo" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none" placeholder="00:00:00..."></div>
                             </div>
                         </div>
 
@@ -248,19 +248,33 @@ $data = ActivoController::getFormData();
                 const data = await res.json();
                 if(data.success) {
                     const p = data.principal;
-                    // Llenar campos principales
-                    document.getElementsByName('serial')[0].value = p.serial;
-                    document.getElementsByName('referencia')[0].value = p.referencia;
-                    document.getElementsByName('hostname')[0].value = p.hostname || '';
-                    document.getElementsByName('ip_equipo')[0].value = p.ip;
-                    document.getElementsByName('mac_activo')[0].value = p.mac;
-                    document.getElementById('input-responsable').value = p.responsable;
 
-                    // Mapear Tipo y Marca por texto inteligente
-                    seleccionarMatch('id_tipoequi', p.tipo);
-                    seleccionarMatch('id_marca', p.marca);
+                    // 1. Llenar campos de texto simples
+                    document.getElementsByName('serial')[0].value    = p.serial      || '';
+                    document.getElementsByName('referencia')[0].value = p.referencia || '';
+                    document.getElementById('input-responsable').value = p.responsable || '';
 
-                    // Inyectar Accesorios detectados (Filtrados por el controlador)
+                    // 2. Seleccionar Tipo de equipo
+                    seleccionarPorTexto('selectTipo', p.tipo);
+
+                    // 3. Forzar visibilidad del grupo-redes si hay datos de red,
+                    //    independiente de si el tipo se seleccionó o no
+                    if (p.ip || p.mac || p.hostname) {
+                        document.getElementById('grupo-redes').style.display = 'block';
+                        document.getElementById('grupo-padre').style.display = 'none';
+                    } else {
+                        toggleCampos();
+                    }
+
+                    // 4. Llenar IP/MAC/Hostname por name (funcionan aunque el div esté oculto)
+                    document.getElementById('input-ip').value       = p.ip       || '';
+                    document.getElementById('input-mac').value      = p.mac      || '';
+                    document.getElementById('input-hostname').value = p.hostname || '';
+
+                    // 4. Marca: buscar en el select, si no existe crearla via API
+                    await seleccionarOCrearMarca(p.marca);
+
+                    // 5. Inyectar Accesorios
                     document.querySelector('#tablaAccesorios tbody').innerHTML = "";
                     data.accesorios.forEach(acc => {
                         const quickAdd = document.getElementById('quickAdd');
@@ -269,16 +283,15 @@ $data = ActivoController::getFormData();
                                 quickAdd.value = opt.value;
                                 addAccessory();
                                 const lastRow = document.querySelector('#tablaAccesorios tbody tr:last-child');
-                                lastRow.querySelector('.acc-serial').value = acc.serial;
-                                lastRow.querySelector('.acc-ref').value = acc.ref;
+                                lastRow.querySelector('.acc-serial').value = acc.serial || '';
+                                lastRow.querySelector('.acc-ref').value    = acc.referencia || acc.ref || '';
                                 break;
                             }
                         }
                     });
 
                     bootstrap.Modal.getInstance(document.getElementById('modalCargaExcel')).hide();
-                    buscarEmpleado(); // Verificar responsable extraído
-                    toggleCampos();
+                    buscarEmpleado();
                 }
             } finally { 
                 btn.innerHTML = originalText;
@@ -287,15 +300,64 @@ $data = ActivoController::getFormData();
         }
 
         // Helper para encontrar ID por coincidencia de texto
-        function seleccionarMatch(name, texto) {
-            const select = document.getElementsByName(name)[0];
-            if (!select || !texto) return;
-            const search = texto.toUpperCase();
+        // Selecciona una opción en un <select> por id, buscando coincidencia parcial de texto
+        function seleccionarPorTexto(selectId, texto) {
+            const select = document.getElementById(selectId);
+            if (!select || !texto) return false;
+            const search = texto.toUpperCase().trim();
+
+            // Palabras clave alternativas para tipo computador
+            const aliasComputador = ['COMPUTADOR', 'PORTATIL', 'PORTATIL', 'PC', 'LAPTOP', 'NOTEBOOK', 'AIO', 'TODO EN UNO', 'SERVIDOR'];
+            const esComputador = aliasComputador.some(a => search.includes(a));
+
             for (let opt of select.options) {
-                if (opt.text.toUpperCase().includes(search) || search.includes(opt.text.toUpperCase())) {
+                const optText = opt.text.toUpperCase().trim();
+                // Coincidencia directa
+                if (optText.includes(search) || search.includes(optText)) {
                     select.value = opt.value;
-                    break;
+                    select.dispatchEvent(new Event('change'));
+                    return true;
                 }
+                // Si es un tipo computador, aceptar cualquier opción que contenga palabras clave
+                if (esComputador && aliasComputador.some(a => optText.includes(a))) {
+                    select.value = opt.value;
+                    select.dispatchEvent(new Event('change'));
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Busca la marca en el select; si no existe la crea en la BD y agrega la opción
+        async function seleccionarOCrearMarca(marca) {
+            if (!marca) return;
+
+            // Intentar seleccionar primero
+            const encontrada = seleccionarPorTexto('selectMarca', marca);
+            if (encontrada) return;
+
+            // No existe → crear via API
+            try {
+                const fd = new FormData();
+                fd.append('accion', 'crear_marca');
+                fd.append('nom_marca', marca.trim());
+                // Enviar el tipo de equipo seleccionado para asociar la marca correctamente
+                const tipoSeleccionado = document.getElementById('selectTipo')?.value || 0;
+                fd.append('id_tipo', tipoSeleccionado);
+                const res  = await fetch('../controllers/parametrosController.php', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success && data.id) {
+                    // Agregar la nueva opción al select y seleccionarla
+                    const select  = document.getElementById('selectMarca');
+                    const option  = new Option(marca.trim(), data.id, true, true);
+                    select.add(option);
+                    select.value = data.id;
+                    console.log('Marca creada automáticamente:', marca, 'ID:', data.id);
+                } else {
+                    console.warn('No se pudo crear la marca:', data.msg || 'error desconocido');
+                }
+            } catch(e) {
+                console.warn('Error al crear marca:', e);
             }
         }
 

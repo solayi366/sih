@@ -190,5 +190,50 @@ class ParametrosController {
  * Bloque de ejecución: Procesa peticiones POST y acciones DELETE vía GET
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || (isset($_GET['action']) && $_GET['action'] === 'delete')) {
+
+    // Endpoint AJAX especial: crear_marca desde el analizador de Excel
+    // Devuelve JSON en lugar de redirigir
+    if (isset($_POST['accion']) && $_POST['accion'] === 'crear_marca') {
+        ini_set('display_errors', 0);
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'msg' => 'No autorizado']);
+            exit();
+        }
+        try {
+            $db  = Database::conectar();
+            $nom = trim($_POST['nom_marca'] ?? '');
+            $tip = intval($_POST['id_tipo'] ?? 0); // Tipo de equipo para asociar la marca
+
+            if (empty($nom)) {
+                echo json_encode(['success' => false, 'msg' => 'Nombre de marca vacío']);
+                exit();
+            }
+
+            // Si no viene tipo, usar 0 (la función lo maneja o se puede dejar NULL)
+            $stmt = $db->prepare("SELECT * FROM fun_create_marca(:nom, :tip)");
+            $stmt->execute([':nom' => $nom, ':tip' => $tip ?: null]);
+            $res  = $stmt->fetch();
+
+            if ($res && $res['id_res'] > 0) {
+                echo json_encode(['success' => true, 'id' => $res['id_res'], 'msg' => $res['msj']]);
+            } else {
+                // Si ya existe (id_res = 0), buscarla para devolver su ID
+                $stmt2 = $db->prepare("SELECT id_marca FROM tab_marca WHERE UPPER(nom_marca) = UPPER(:nom) LIMIT 1");
+                $stmt2->execute([':nom' => $nom]);
+                $existing = $stmt2->fetch();
+                if ($existing) {
+                    echo json_encode(['success' => true, 'id' => $existing['id_marca'], 'msg' => 'Marca ya existente, seleccionada']);
+                } else {
+                    echo json_encode(['success' => false, 'msg' => $res['msj'] ?? 'No se pudo crear la marca']);
+                }
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'msg' => 'Error: ' . $e->getMessage()]);
+        }
+        exit();
+    }
+
     ParametrosController::handleAction();
 }
