@@ -1,0 +1,1 @@
+<?php echo extension_loaded('zip') ? "ZIP OK" : "ZIP DESACTIVADO"; ?>

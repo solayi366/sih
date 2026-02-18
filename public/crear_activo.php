@@ -4,7 +4,6 @@ $data = ActivoController::getFormData();
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,7 +41,7 @@ $data = ActivoController::getFormData();
             border-right: 2px solid #e2e8f0; color: #94a3b8; cursor: pointer;
         }
         .input-ruby { flex: 1; padding: 0.625rem 1rem; font-size: 0.875rem; font-weight: 700; outline: none; }
-        .label-ruby { font-size: 0.6875rem; font-weight: 800; color: #64748b; text-transform; margin-bottom: 0.5rem; display: block; }
+        .label-ruby { font-size: 0.6875rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
     </style>
 </head>
 
@@ -92,12 +91,12 @@ $data = ActivoController::getFormData();
                                         </select>
                                     </div>
                                 </div>
-                                <div id="col-modelo"><label class="label-ruby">Modelo</label><div class="input-group-ruby"><select class="input-ruby cursor-pointer" name="id_modelo" id="selector-modelo"><option value="">(Genérico / Sin Modelo)</option><?php foreach ($data['modelos'] as $mod): ?><option value="<?= $mod['id_modelo'] ?>" data-tipo="<?= $mod['id_tipoequi'] ?>"><?= $mod['nom_modelo'] ?></option><?php endforeach; ?></select></div></div>
-                                <div id="col-referencia"><label class="label-ruby">Referencia</label><div class="input-group-ruby"><input type="text" name="referencia" class="input-ruby" placeholder="Modelo o Referencia"></div></div>
+                                <div id="col-modelo" style="display:none;"><label class="label-ruby">Modelo</label><div class="input-group-ruby"><select class="input-ruby cursor-pointer" name="id_modelo" id="selector-modelo"><option value="">(Genérico)</option><?php foreach ($data['modelos'] as $mod): ?><option value="<?= $mod['id_modelo'] ?>" data-tipo="<?= $mod['id_tipoequi'] ?>"><?= $mod['nom_modelo'] ?></option><?php endforeach; ?></select></div></div>
+                                <div id="col-referencia"><label class="label-ruby">Referencia</label><div class="input-group-ruby"><input type="text" name="referencia" class="input-ruby" placeholder="Referencia técnica"></div></div>
                                 <div class="md:col-span-2">
                                     <label class="label-ruby text-brand-600">Serial del Fabricante (S/N) *</label>
                                     <div class="input-group-ruby border-brand-100">
-                                        <input type="text" name="serial" class="input-ruby font-mono  text-base" placeholder="serial..." required>
+                                        <input type="text" name="serial" class="input-ruby font-mono uppercase text-base" placeholder="serial..." required>
                                     </div>
                                 </div>
                             </div>
@@ -130,7 +129,7 @@ $data = ActivoController::getFormData();
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left" id="tablaAccesorios">
                                     <thead class="border-b border-white/10">
-                                        <tr class="text-[9px] font-black text-slate-500  tracking-widest">
+                                        <tr class="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                             <th class="pb-4 px-2">Tipo</th>
                                             <th class="pb-4 px-2">Serial / Ref</th>
                                             <th class="pb-4 text-right">Acción</th>
@@ -196,12 +195,12 @@ $data = ActivoController::getFormData();
                 </div>
                 <div class="p-10 text-center">
                     <i class="fas fa-file-upload text-3xl text-brand-600 mb-4"></i>
-                    <p class="text-xs text-slate-500 font-bold uppercase mb-8">Suba el archivo .xlsx para detectar activos.</p>
-                    <input type="file" id="excelFileInput" accept=".xlsx" class="text-xs font-bold">
+                    <p class="text-xs text-slate-500 font-bold uppercase mb-8">Suba el archivo .xlsx para detectar los datos.</p>
+                    <input type="file" id="excelFileInput" accept=".xlsx" class="text-xs font-bold text-slate-400">
                 </div>
                 <div class="p-6 bg-slate-50 flex gap-4">
                     <button type="button" class="flex-1 py-3 text-xs font-bold text-slate-400" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" id="btnAnalizar" onclick="procesarExcel()" class="flex-1 py-3 red-gradient text-white rounded-xl text-xs font-black shadow-lg">ANALIZAR</button>
+                    <button type="button" id="btnAnalizar" onclick="procesarExcel()" class="flex-1 py-3 red-gradient text-white rounded-xl text-xs font-black shadow-lg uppercase">Analizar</button>
                 </div>
             </div>
         </div>
@@ -218,7 +217,7 @@ $data = ActivoController::getFormData();
             const tbody = document.querySelector('#tablaAccesorios tbody');
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="py-4 px-2"><input type="hidden" class="acc-id" value="${id}"><span class="text-xs font-black text-brand-500">${nombre}</span></td>
+                <td class="py-4 px-2"><input type="hidden" class="acc-id" value="${id}"><span class="text-xs font-black text-brand-500 uppercase">${nombre}</span></td>
                 <td class="py-4 px-2 space-y-2">
                     <input type="text" class="acc-serial block w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] text-white font-mono outline-none" placeholder="Serial">
                     <input type="text" class="acc-ref block w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] text-slate-400 outline-none" placeholder="Ref">
@@ -230,7 +229,7 @@ $data = ActivoController::getFormData();
         }
 
         /**
-         * PROCESAR EXCEL (Gama Alta)
+         * PROCESAR EXCEL (Lógica Inteligente)
          * Envía el archivo, recibe el JSON e inyecta en el DOM sin recargar.
          */
         async function procesarExcel() {
@@ -248,19 +247,20 @@ $data = ActivoController::getFormData();
                 const res = await fetch('../controllers/activoController.php?action=analizar', { method: 'POST', body: formData });
                 const data = await res.json();
                 if(data.success) {
-                    // Pre-llenar campos principales
-                    document.getElementsByName('serial')[0].value = data.principal.serial;
-                    document.getElementsByName('referencia')[0].value = data.principal.referencia;
-                    document.getElementsByName('hostname')[0].value = data.principal.hostname;
-                    document.getElementsByName('ip_equipo')[0].value = data.principal.ip;
-                    document.getElementsByName('mac_activo')[0].value = data.principal.mac;
-                    document.getElementById('input-responsable').value = data.principal.responsable;
+                    const p = data.principal;
+                    // Llenar campos principales
+                    document.getElementsByName('serial')[0].value = p.serial;
+                    document.getElementsByName('referencia')[0].value = p.referencia;
+                    document.getElementsByName('hostname')[0].value = p.hostname || '';
+                    document.getElementsByName('ip_equipo')[0].value = p.ip;
+                    document.getElementsByName('mac_activo')[0].value = p.mac;
+                    document.getElementById('input-responsable').value = p.responsable;
 
-                    // Mapear Tipo y Marca por texto
-                    seleccionarMatch('id_tipoequi', data.principal.tipo);
-                    seleccionarMatch('id_marca', data.principal.marca);
+                    // Mapear Tipo y Marca por texto inteligente
+                    seleccionarMatch('id_tipoequi', p.tipo);
+                    seleccionarMatch('id_marca', p.marca);
 
-                    // Inyectar Accesorios en la tabla
+                    // Inyectar Accesorios detectados (Filtrados por el controlador)
                     document.querySelector('#tablaAccesorios tbody').innerHTML = "";
                     data.accesorios.forEach(acc => {
                         const quickAdd = document.getElementById('quickAdd');
@@ -268,16 +268,17 @@ $data = ActivoController::getFormData();
                             if(opt.text.toUpperCase().includes(acc.tipo.toUpperCase())) {
                                 quickAdd.value = opt.value;
                                 addAccessory();
-                                const rows = document.querySelectorAll('#tablaAccesorios tbody tr');
-                                const last = rows[rows.length - 1];
-                                last.querySelector('.acc-serial').value = acc.serial;
-                                last.querySelector('.acc-ref').value = acc.ref;
+                                const lastRow = document.querySelector('#tablaAccesorios tbody tr:last-child');
+                                lastRow.querySelector('.acc-serial').value = acc.serial;
+                                lastRow.querySelector('.acc-ref').value = acc.ref;
                                 break;
                             }
                         }
                     });
+
                     bootstrap.Modal.getInstance(document.getElementById('modalCargaExcel')).hide();
-                    toggleCampos(); // Actualizar visibilidad de campos de red
+                    buscarEmpleado(); // Verificar responsable extraído
+                    toggleCampos();
                 }
             } finally { 
                 btn.innerHTML = originalText;
@@ -285,12 +286,15 @@ $data = ActivoController::getFormData();
             }
         }
 
+        // Helper para encontrar ID por coincidencia de texto
         function seleccionarMatch(name, texto) {
             const select = document.getElementsByName(name)[0];
             if (!select || !texto) return;
+            const search = texto.toUpperCase();
             for (let opt of select.options) {
-                if (opt.text.toUpperCase().includes(texto.toUpperCase())) {
-                    select.value = opt.value; break;
+                if (opt.text.toUpperCase().includes(search) || search.includes(opt.text.toUpperCase())) {
+                    select.value = opt.value;
+                    break;
                 }
             }
         }
@@ -300,7 +304,6 @@ $data = ActivoController::getFormData();
             document.querySelectorAll('#tablaAccesorios tbody tr').forEach(tr => {
                 accesorios.push({
                     tipo_id: tr.querySelector('.acc-id').value,
-                    tipo_nombre: tr.querySelector('span').innerText,
                     serial: tr.querySelector('.acc-serial').value,
                     referencia: tr.querySelector('.acc-ref').value
                 });
@@ -311,12 +314,8 @@ $data = ActivoController::getFormData();
 
         function toggleCampos() {
             var select = document.getElementById("selectTipo");
-            var idTipo = select.value;
             var nombreTipo = (select.options[select.selectedIndex]?.getAttribute("data-nombre") || "").toUpperCase();
-            var llevaModelo = ["TABLET", "PORTATIL", "COMPUTADOR", "PC", "MONITOR", "CELULAR"].some(t => nombreTipo.includes(t));
-            document.getElementById("col-modelo").style.display = llevaModelo ? "block" : "none";
             var esPC = ["TABLET", "COMPUTADOR", "PORTATIL", "PC", "SERVIDOR", "AIO"].some(t => nombreTipo.includes(t));
-            document.getElementById("grupo-hostname").style.display = esPC ? "block" : "none";
             document.getElementById("grupo-redes").style.display = esPC ? "block" : "none";
             document.getElementById("grupo-padre").style.display = esPC ? "none" : "block";
         }
@@ -333,6 +332,10 @@ $data = ActivoController::getFormData();
                     document.getElementById('id_area_nuevo').value = d.id_area;
                     document.getElementById('nom_nuevo_empleado').readOnly = true;
                     document.getElementById('alerta-empleado').innerHTML = `<i class='fas fa-check-circle'></i> Verificado: ${d.nombre}`;
+                } else {
+                    document.getElementById('nom_nuevo_empleado').value = "";
+                    document.getElementById('nom_nuevo_empleado').readOnly = false;
+                    document.getElementById('alerta-empleado').innerHTML = "Custodio Nuevo";
                 }
             } finally { document.getElementById('icon-search').className = 'fas fa-search'; }
         }

@@ -1,13 +1,29 @@
 <?php
 require_once __DIR__ . '/../core/database.php';
-require_once __DIR__ . '/../vendor/SimpleXLSX.php'; // Asegúrate de haber creado este archivo
+
+// RUTA ABSOLUTA PARA EVITAR ERRORES
+$libreria = __DIR__ . '/../vendor/SimpleXLSX.php';
+
+if (file_exists($libreria)) {
+    require_once $libreria;
+} else {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'msg' => 'ERROR CRITICO: No se encuentra el archivo en: ' . $libreria]);
+    exit();
+}
+
+// Si la librería usa namespace (las versiones nuevas lo hacen), 
+// añadimos este alias para que tu código SimpleXLSX::parse funcione:
+use Shuchkin\SimpleXLSX; 
+
 
 class ActivoController {
     
-    // Trae datos para selectores
+    // Trae toda la información para los selectores del formulario
     public static function getFormData() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $db = Database::conectar();
+
         return [
             'tipos'    => $db->query("SELECT id_tipoequi, nom_tipo FROM tab_tipos WHERE activo = TRUE ORDER BY nom_tipo")->fetchAll(),
             'marcas'   => $db->query("SELECT id_marca, nom_marca FROM tab_marca WHERE activo = TRUE ORDER BY nom_marca")->fetchAll(),
@@ -18,86 +34,153 @@ class ActivoController {
     }
 
     /**
-     * ANALIZADOR DE EXCEL DE PRECISIÓN (Gama Alta)
-     * Basado en la estructura de tu Hoja de Vida real
+     * MOTOR DE ANÁLISIS INTELIGENTE (Rastreo de Patrones)
+     * Busca por etiquetas sin coordenadas fijas y detecta contextos (Principal vs Accesorios).
      */
     public static function analizarExcel($fileTmp) {
         if ($xlsx = SimpleXLSX::parse($fileTmp)) {
-            $rows = $xlsx->rows(); // Convierte el Excel en un array 0-indexed
-
-            // Mapeo por coordenadas (Fila - 1 porque el array empieza en 0)
-            // Celda B11 -> rows[10][1]
-            $tipoRaw   = $rows[10][1] ?? '';
-            $marcaRaw  = $rows[11][1] ?? '';
-            $refRaw    = $rows[12][1] ?? '';
-            $serialRaw = $rows[14][1] ?? '';
-            $ipRaw     = $rows[17][1] ?? '';
-            $macRaw    = $rows[18][1] ?? '';
-            $respRaw   = $rows[23][1] ?? ''; // "JOSE LUIS GARAVITO - S12810"
-
-            // Extraer solo la cédula del final del responsable
-            $parts = explode(' - ', $respRaw);
-            $cedula = (count($parts) > 1) ? trim(end($parts)) : '';
-
-            $data = [
-                'success' => true,
+            $grid = $xlsx->rows();
+            
+            $res = [
                 'principal' => [
-                    'tipo'       => $tipoRaw,
-                    'marca'      => $marcaRaw,
-                    'referencia' => $refRaw,
-                    'serial'     => $serialRaw,
-                    'ip'         => $ipRaw,
-                    'mac'        => $macRaw,
-                    'responsable'=> $cedula
+                    'tipo' => '', 'marca' => '', 'referencia' => '', 
+                    'serial' => '', 'ip' => '', 'mac' => '', 
+                    'hostname' => '', 'responsable' => ''
                 ],
                 'accesorios' => []
             ];
 
-            // Detección de Accesorios (Panel Derecho: Columnas D y E)
-            // Lector (E14)
-            if (!empty($rows[13][4])) {
-                $data['accesorios'][] = [
-                    'tipo'   => 'LECTOR',
-                    'serial' => $rows[13][4],
-                    'ref'    => $rows[12][4] ?? ''
-                ];
-            }
-            // Base Lector (E19)
-            if (!empty($rows[18][4]) && $rows[18][4] !== 'N.A') {
-                $data['accesorios'][] = [
-                    'tipo'   => 'BASE LECTOR',
-                    'serial' => $rows[18][4],
-                    'ref'    => $rows[17][4] ?? ''
-                ];
+            // Diccionarios de rastreo
+            $primarios = ['CPU', 'COMPUTADOR', 'TABLET'];
+            $accesorios = ['LECTOR', 'MOUSE', 'TECLADO', 'CARGADOR', 'TELEFONO', 'IMPRESORA', 'MONITOR'];
+            
+            // Almacén temporal para consolidar accesorios encontrados
+            $accEncontrados = []; 
+
+            foreach ($grid as $r => $row) {
+                foreach ($row as $c => $cell) {
+                    $val = trim(strtoupper((string)$cell));
+                    if (empty($val)) continue;
+
+                    // 1. DETERMINAR CONTEXTO (¿A quién pertenece la información de esta columna/zona?)
+                    // Buscamos hacia arriba en la misma columna el título de la categoría
+                    $categoriaActual = "";
+                    for ($i = $r; $i >= 0; $i--) {
+                        $checkCat = trim(strtoupper((string)($grid[$i][$c] ?? '')));
+                        // ¿Es un activo principal?
+                        foreach ($primarios as $p) {
+                            if (strpos($checkCat, $p) !== false) { $categoriaActual = $p; break 2; }
+                        }
+                        // ¿Es un accesorio?
+                        foreach ($accesorios as $a) {
+                            if (strpos($checkCat, $a) !== false) { $categoriaActual = $a; break 2; }
+                        }
+                    }
+
+                    // 2. EXTRACCIÓN DE DATOS SEGÚN REGLAS INTELIGENTES
+                    $valorDerecha = trim((string)($row[$c + 1] ?? ''));
+                    $valorAbajo   = trim((string)($grid[$r + 1][$c] ?? ''));
+
+                    // Regla: SERIAL / SERIE (A la derecha)
+                    if (strpos($val, 'SERIAL') !== false || strpos($val, 'SERIE') !== false) {
+                        if (strpos($val, 'ENVIA') !== false) continue; // Ignorar seriales de envío
+                        $this->asignarDatoInteligente($res, $accEncontrados, $categoriaActual, 'serial', $valorDerecha, $primarios);
+                    }
+
+                    // Regla: REFERENCIA (A la derecha)
+                    if (strpos($val, 'REFERENCIA') !== false) {
+                        $this->asignarDatoInteligente($res, $accEncontrados, $categoriaActual, 'referencia', $valorDerecha, $primarios);
+                    }
+
+                    // Regla: MARCA (A la derecha)
+                    if (strpos($val, 'MARCA') !== false) {
+                        $this->asignarDatoInteligente($res, $accEncontrados, $categoriaActual, 'marca', $valorDerecha, $primarios);
+                    }
+
+                    // Regla: NOMBRE DEL EQUIPO / HOSTNAME (A la derecha)
+                    if (strpos($val, 'NOMBRE') !== false && strpos($val, 'EQUIPO') !== false) {
+                        $res['principal']['hostname'] = $valorDerecha;
+                    }
+
+                    // Regla: RESPONSABLE -> CUSTODIO (Abajo)
+                    if (strpos($val, 'RESPONSABLE') !== false) {
+                        $respParts = explode(' - ', $valorAbajo);
+                        $res['principal']['responsable'] = trim(end($respParts)); // Extrae la cédula/ID
+                    }
+
+                    // Reglas de Red (IP/MAC)
+                    if ($val === 'IP')  $res['principal']['ip'] = $valorDerecha;
+                    if ($val === 'MAC') $res['principal']['mac'] = $valorDerecha;
+
+                    // Detectar Tipo Principal si se encuentra la palabra sola
+                    foreach ($primarios as $p) {
+                        if ($val === $p && empty($res['principal']['tipo'])) $res['principal']['tipo'] = $p;
+                    }
+                }
             }
 
-            return $data;
+            // Convertir accesorios temporales al formato final (Filtrando N/A)
+            foreach ($accEncontrados as $tipo => $datos) {
+                $s = trim($datos['serial'] ?? '');
+                if (!empty($s) && $s !== 'N/A' && $s !== 'N.A') {
+                    $res['accesorios'][] = [
+                        'tipo'   => $tipo,
+                        'serial' => $s,
+                        'ref'    => $datos['referencia'] ?? ($datos['marca'] ?? '')
+                    ];
+                }
+            }
+
+            return ['success' => true, 'principal' => $res['principal'], 'accesorios' => $res['accesorios']];
+        }
+        return ['success' => false, 'msg' => 'No se pudo leer el archivo XLSX.'];
+    }
+
+    /**
+     * Helper privado para decidir si el dato es del Activo Base o de un Accesorio
+     */
+    private static function asignarDatoInteligente(&$res, &$accs, $categoria, $campo, $valor, $primarios) {
+        if (empty($valor) || strtoupper($valor) === 'N/A' || strtoupper($valor) === 'N.A') return;
+
+        // Si la categoría detectada es de un activo principal
+        $esPrincipal = false;
+        foreach ($primarios as $p) { if ($categoria === $p) $esPrincipal = true; }
+
+        if ($esPrincipal || empty($categoria)) {
+            $res['principal'][$campo] = $valor;
+            if (!empty($categoria)) $res['principal']['tipo'] = $categoria;
         } else {
-            return ['success' => false, 'msg' => SimpleXLSX::parseError()];
+            // Es un accesorio
+            $accs[$categoria][$campo] = $valor;
         }
     }
 
-    // Guardado Masivo Transaccional
+    // Procesa el POST del formulario
     public static function store($postData) {
         try {
             $db = Database::conectar();
             $db->beginTransaction();
 
+            // 1. Verificar/Crear Empleado
             $cod = $postData['cod_responsable'];
-            
-            // 1. Si el empleado es nuevo, crearlo
-            if (!empty($postData['nom_nuevo_empleado'])) {
-                $stmtE = $db->prepare("SELECT * FROM fun_create_empleado(:c, :n, :a)");
-                $stmtE->execute([':c' => $cod, ':n' => $postData['nom_nuevo_empleado'], ':a' => $postData['id_area_nuevo']]);
+            $nom = $postData['nom_nuevo_empleado'];
+            $id_area = $postData['id_area_nuevo'];
+
+            if (!empty($nom) && !empty($id_area)) {
+                $stmtEmp = $db->prepare("SELECT * FROM fun_create_empleado(:c, :n, :a)");
+                $stmtEmp->execute([':c' => $cod, ':n' => $nom, ':a' => $id_area]);
             }
 
             // 2. Crear Activo Principal
-            $stmtA = $db->prepare("SELECT * FROM fun_create_activo(:ser, :qr, :host, :ref, :mac, :ip, :tipo, :marca, :mod, :est, :resp, :padre)");
-            $qr_p = "QR-" . strtoupper(bin2hex(random_bytes(3)));
+            $stmtAct = $db->prepare("SELECT * FROM fun_create_activo(
+                :ser, :qr, :host, :ref, :mac, :ip, :tipo, :marca, :mod, :est, :resp, :padre
+            )");
             
-            $stmtA->execute([
+            $qr = "QR-" . strtoupper(bin2hex(random_bytes(3)));
+
+            $stmtAct->execute([
                 ':ser'   => $postData['serial'],
-                ':qr'    => $qr_p,
+                ':qr'    => $qr,
                 ':host'  => $postData['hostname'] ?? null,
                 ':ref'   => $postData['referencia'] ?? null,
                 ':mac'   => $postData['mac_activo'] ?? null,
@@ -110,28 +193,30 @@ class ActivoController {
                 ':padre' => !empty($postData['id_padre_activo']) ? $postData['id_padre_activo'] : null
             ]);
 
-            $resP = $stmtA->fetch();
-            $id_padre = $resP['id_res'];
+            $resPrincipal = $stmtAct->fetch();
+            $id_padre_nuevo = $resPrincipal['id_res'];
 
-            // 3. Procesar Accesorios del JSON
-            if (!empty($postData['accesorios_json_final']) && $id_padre > 0) {
-                $accs = json_decode($postData['accesorios_json_final'], true);
-                foreach ($accs as $a) {
-                    $stmtAcc = $db->prepare("SELECT * FROM fun_create_activo(:ser, :qr, NULL, :ref, NULL, NULL, :tipo, :marca, NULL, 'Bueno', :resp, :padre)");
+            // 3. Procesar Accesorios (Heredan Marca y Responsable)
+            if (!empty($postData['accesorios_json_final']) && $id_padre_nuevo > 0) {
+                $accesorios = json_decode($postData['accesorios_json_final'], true);
+                foreach ($accesorios as $acc) {
+                    $qr_acc = "QR-" . strtoupper(bin2hex(random_bytes(3)));
+                    $stmtAcc = $db->prepare("SELECT * FROM fun_create_activo(:ser, :qr, NULL, :ref, NULL, NULL, :tipo, :marca, NULL, :est, :resp, :padre)");
                     $stmtAcc->execute([
-                        ':ser'   => !empty($a['serial']) ? $a['serial'] : 'S/N-GEN-' . bin2hex(random_bytes(2)),
-                        ':qr'    => "QR-" . strtoupper(bin2hex(random_bytes(3))),
-                        ':ref'   => $a['referencia'],
-                        ':tipo'  => $a['tipo_id'],
+                        ':ser'   => !empty($acc['serial']) ? $acc['serial'] : 'S/N-GEN-' . strtoupper(bin2hex(random_bytes(2))),
+                        ':qr'    => $qr_acc,
+                        ':ref'   => !empty($acc['referencia']) ? $acc['referencia'] : $acc['tipo_nombre'],
+                        ':tipo'  => $acc['tipo_id'],
                         ':marca' => $postData['id_marca'],
+                        ':est'   => 'Bueno',
                         ':resp'  => $cod,
-                        ':padre' => $id_padre
+                        ':padre' => $id_padre_nuevo
                     ]);
                 }
             }
 
             $db->commit();
-            header("Location: ../public/activos.php?msg=Registro exitoso&tipo=success");
+            header("Location: ../public/activos.php?msg=Activo registrado correctamente&tipo=success");
         } catch (Exception $e) {
             if ($db->inTransaction()) $db->rollBack();
             header("Location: ../public/crear_activo.php?msg=" . urlencode($e->getMessage()) . "&tipo=danger");
@@ -140,7 +225,7 @@ class ActivoController {
     }
 }
 
-// Router
+// ROUTER DE ACCIONES
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_GET['action']) && $_GET['action'] == 'analizar') {
         header('Content-Type: application/json');
