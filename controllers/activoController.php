@@ -31,41 +31,47 @@ class ActivoController {
             return ['success' => false, 'msg' => 'No se pudo leer el archivo .xlsx: ' . SimpleXLSX::parseError()];
         }
 
-        $grid       = self::buildGrid($xlsx->rows());
-        $cabecera   = self::parseCabecera($grid);
-        $cpu        = self::parseCPU($grid);
-        $accIzq     = self::parseAccesoriosIzquierda($grid);
-        $accDer     = self::parseAccesoriosDerecha($grid);
-        $accesorios = array_merge($accIzq, $accDer);
-        $tipoEquipo = self::mapearTipoEquipo($cabecera['tipo_equipo']);
+        $grid            = self::buildGrid($xlsx->rows());
+        $cabecera        = self::parseCabecera($grid);
+        $equipoData      = self::parseEquipoPrincipal($grid);
+        $accIzq          = self::parseAccesoriosIzquierda($grid, $equipoData['seccion_fin']);
+        $accDer          = self::parseAccesoriosDerecha($grid);
+        $accesorios      = array_merge($accIzq, $accDer);
+        $tipoEquipo      = self::mapearTipoEquipo($equipoData['seccion_nombre']);
 
         return [
             'success'     => true,
             'principal'   => [
                 'tipo'        => $tipoEquipo,
-                'marca'       => $cpu['marca']      ?? '',
-                'referencia'  => $cpu['referencia'] ?? '',
-                'serial'      => $cpu['serial']     ?? '',
-                'ip'          => $cpu['ip']         ?? '',
-                'mac'         => $cpu['mac']        ?? '',
+                'marca'       => $equipoData['marca']       ?? '',
+                'referencia'  => $equipoData['referencia']  ?? '',
+                'serial'      => $equipoData['serial']      ?? '',
+                'ip'          => $equipoData['ip']          ?? '',
+                'mac'         => $equipoData['mac']         ?? '',
                 'hostname'    => $cabecera['nombre_equipo'] ?? '',
                 'responsable' => $cabecera['responsable']   ?? '',
             ],
             'cpu_detalle' => [
-                'procesador'  => $cpu['procesador']  ?? '',
-                'ram'         => $cpu['ram']         ?? '',
-                'disco_duro'  => $cpu['disco_duro']  ?? '',
-                'windows'     => $cpu['windows']     ?? '',
-                'office'      => $cpu['office']      ?? '',
-                'tipo_so'     => $cpu['tipo_so']     ?? '',
-                'cd'          => $cpu['cd']          ?? '',
-                'usuario'     => $cabecera['usuario']     ?? '',
-                'dependencia' => $cabecera['dependencia'] ?? '',
-                'fecha'       => $cabecera['fecha']       ?? '',
+                'procesador'   => $equipoData['procesador']       ?? '',
+                'ram'          => $equipoData['ram']              ?? '',
+                'disco_duro'   => $equipoData['disco_duro']       ?? '',
+                'almacenamiento'=> $equipoData['almacenamiento']  ?? '',
+                'windows'      => $equipoData['windows']          ?? '',
+                'so'           => $equipoData['sistema_operativo']?? '',
+                'version_so'   => $equipoData['version']          ?? '',
+                'office'       => $equipoData['office']           ?? '',
+                'modelo'       => $equipoData['modelo']           ?? '',
+                'usuario'      => $cabecera['usuario']            ?? '',
+                'dependencia'  => $cabecera['dependencia']        ?? '',
+                'fecha'        => $cabecera['fecha']              ?? '',
             ],
-            'accesorios' => $accesorios,
+            'accesorios'  => $accesorios,
         ];
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // HELPERS BASE
+    // ─────────────────────────────────────────────────────────────
 
     private static function buildGrid(array $rows) {
         $grid = [];
@@ -90,25 +96,41 @@ class ActivoController {
 
     private static function isEmpty($v) {
         $u = self::norm($v);
-        return ($u === '' || $u === 'N/A' || $u === 'N.A' || $u === 'NA' || $u === 'NO APLICA' || $u === 'S/N' || $u === '-');
+        return ($u === '' || $u === 'N/A' || $u === 'N.A' || $u === 'NA'
+             || $u === 'NO APLICA' || $u === 'S/N' || $u === '-');
     }
 
     private static function val($v) {
         return self::isEmpty($v) ? null : trim($v);
     }
 
-    private static function mapearTipoEquipo($tipo) {
+    // ─────────────────────────────────────────────────────────────
+    // MAPEO TIPO DE EQUIPO (nombre sección → nombre en tab_tipos)
+    // ─────────────────────────────────────────────────────────────
+    private static function mapearTipoEquipo($seccion) {
+        // Claves de cabecera (campo "Portatil _X_")
         $mapa = [
-            'Portatil'    => 'Computador',
-            'Escritorio'  => 'Computador',
-            'Todo en Uno' => 'Computador',
             'CPU'         => 'Computador',
+            'COMPUTADOR'  => 'Computador',
+            'PORTATIL'    => 'Computador',
+            'ESCRITORIO'  => 'Computador',
+            'TODO EN UNO' => 'Computador',
+            'AIO'         => 'Computador',
+            'SERVIDOR'    => 'Servidor',
+            'TABLET'      => 'Tablet',
+            'CELULAR'     => 'Celular',
+            'TELEFONO'    => 'Telefono',
             ''            => 'Computador',
         ];
-        return isset($mapa[$tipo]) ? $mapa[$tipo] : $tipo;
+        $key = self::norm($seccion);
+        return isset($mapa[$key]) ? $mapa[$key] : $seccion;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // CABECERA (fecha, usuario, nombre equipo, dependencia, responsable)
+    // ─────────────────────────────────────────────────────────────
     private static function parseCabecera(array $grid) {
+        // Detectar tipo desde campo "Portatil _X_ Escritorio __" si existe
         $tipoEquipo = '';
         foreach ($grid as $r => $row) {
             foreach ($row as $c => $val) {
@@ -139,30 +161,42 @@ class ActivoController {
             'USUARIO'       => 'usuario',
             'NOMBRE EQUIPO' => 'nombre_equipo',
             'DEPENDENCIA'   => 'dependencia',
-            'RESPONSABLE'   => 'responsable',
         ];
 
         foreach ($grid as $r => $row) {
             foreach ($row as $c => $val) {
                 $key = self::norm($val);
+
+                // Campos normales: etiqueta → valor a la derecha o abajo
                 foreach ($labelMap as $label => $field) {
                     if (strpos($key, $label) !== false && empty($result[$field])) {
                         $right = self::g($grid, $r, $c + 1);
                         $below = self::g($grid, $r + 1, $c);
-                        $found = '';
-                        if (!self::isEmpty($right)) {
-                            $found = $right;
-                        } elseif (!self::isEmpty($below)) {
-                            $found = $below;
-                        }
+                        $found = !self::isEmpty($right) ? $right : (!self::isEmpty($below) ? $below : '');
                         if (!empty($found)) {
                             $result[$field] = $found;
                         }
                     }
                 }
+
+                // Responsable: puede estar en col E/F, o en formato B="Responsable:" → B_siguiente=nombre
+                if (strpos($key, 'RESPONSABLE') !== false && empty($result['responsable'])) {
+                    // Caso 1: valor a la derecha (col E → col F)
+                    $right = self::g($grid, $r, $c + 1);
+                    if (!self::isEmpty($right)) {
+                        $result['responsable'] = $right;
+                        continue;
+                    }
+                    // Caso 2: valor en la fila siguiente (B="Responsable:" → B+1=nombre)
+                    $below = self::g($grid, $r + 1, $c);
+                    if (!self::isEmpty($below)) {
+                        $result['responsable'] = $below;
+                    }
+                }
             }
         }
 
+        // Normalizar fecha
         if (!empty($result['fecha'])) {
             if (preg_match('/(\d{4}-\d{2}-\d{2})/', $result['fecha'], $m)) {
                 $result['fecha'] = $m[1];
@@ -172,92 +206,128 @@ class ActivoController {
         return $result;
     }
 
-    private static function parseCPU(array $grid) {
-        $cpu = [];
+    // ─────────────────────────────────────────────────────────────
+    // EQUIPO PRINCIPAL — detecta automáticamente la sección
+    // (CPU, TABLET, SERVIDOR, etc.) y extrae sus datos
+    // ─────────────────────────────────────────────────────────────
+    private static function parseEquipoPrincipal(array $grid) {
 
-        // Coincidencia EXACTA para etiquetas cortas
-        // Evita que 'IP' coincida con 'TIPO S.O' (contiene "IP" en su interior)
-        $exactMap = [
-            'IP'  => 'ip',
-            'MAC' => 'mac',
-            'CD'  => 'cd',
-            'RAM' => 'ram',
-        ];
+        // Secciones que pueden ser el equipo principal
+        $SECCIONES_PRINCIPALES = ['CPU', 'TABLET', 'COMPUTADOR', 'PORTATIL', 'SERVIDOR', 'AIO', 'CELULAR'];
 
-        // Coincidencia PARCIAL para etiquetas largas
-        $labelMap = [
-            'MARCA'      => 'marca',
-            'REFERENCIA' => 'referencia',
-            'SERIAL'     => 'serial',
-            'SERIE'      => 'serial',
-            'WINDOWS'    => 'windows',
-            'TIPO S.O'   => 'tipo_so',
-            'OFFICE'     => 'office',
-            'PROCESADOR' => 'procesador',
-            'DISCO DURO' => 'disco_duro',
-        ];
+        // Secciones que marcan el FIN de la sección principal
+        $SECCIONES_FIN = ['TECLADO', 'TARJETA RED', 'TELEFONO', 'BACKUP', 'ACTUALIZACIONES', 'RESPONSABLE'];
 
-        $cpuStart = null;
+        // Encontrar sección principal en col B (index 1)
+        $seccionNombre = '';
+        $seccionStart  = null;
         foreach ($grid as $r => $row) {
-            if (isset($row[1]) && self::norm($row[1]) === 'CPU') {
-                $cpuStart = $r;
+            if (!isset($row[1])) continue;
+            $norm = self::norm($row[1]);
+            if (in_array($norm, $SECCIONES_PRINCIPALES)) {
+                $seccionNombre = $norm;
+                $seccionStart  = $r;
                 break;
             }
         }
-        if ($cpuStart === null) {
-            return $cpu;
+        if ($seccionStart === null) {
+            return ['seccion_nombre' => '', 'seccion_fin' => PHP_INT_MAX];
         }
 
-        $seccionesFin = ['TECLADO', 'TARJETA RED', 'TELEFONO', 'BACKUP', 'ACTUALIZACIONES'];
-        $cpuEnd = PHP_INT_MAX;
+        // Encontrar fin de sección
+        $seccionFin = PHP_INT_MAX;
         foreach ($grid as $r => $row) {
-            if ($r <= $cpuStart) {
-                continue;
-            }
-            if (isset($row[1])) {
-                $norm = self::norm($row[1]);
-                foreach ($seccionesFin as $s) {
-                    if (strpos($norm, $s) !== false) {
-                        $cpuEnd = $r;
-                        break 2;
-                    }
+            if ($r <= $seccionStart) continue;
+            if (!isset($row[1])) continue;
+            $norm = self::norm($row[1]);
+            foreach ($SECCIONES_FIN as $s) {
+                if (strpos($norm, $s) !== false) {
+                    $seccionFin = $r;
+                    break 2;
                 }
             }
         }
 
+        // Etiquetas con coincidencia EXACTA (evita colisiones como IP dentro de TIPO S.O)
+        $exactMap = [
+            'IP'      => 'ip',
+            'MAC'     => 'mac',
+            'CD'      => 'cd',
+            'RAM'     => 'ram',
+            'VERSION' => 'version',
+        ];
+
+        // Etiquetas con coincidencia PARCIAL
+        $labelMap = [
+            'MARCA'            => 'marca',
+            'MODELO'           => 'modelo',
+            'REFERENCIA'       => 'referencia',
+            'SERIAL'           => 'serial',
+            'SERIE'            => 'serial',
+            'WINDOWS'          => 'windows',
+            'SISTEMA OPERATIVO'=> 'sistema_operativo',
+            'TIPO S.O'         => 'tipo_so',
+            'OFFICE'           => 'office',
+            'PROCESADOR'       => 'procesador',
+            'DISCO DURO'       => 'disco_duro',
+            'ALMACENAMIENTO'   => 'almacenamiento',
+        ];
+
+        $datos = ['seccion_nombre' => $seccionNombre, 'seccion_fin' => $seccionFin];
+
         foreach ($grid as $r => $row) {
-            if ($r < $cpuStart || $r >= $cpuEnd) {
-                continue;
-            }
+            if ($r < $seccionStart || $r >= $seccionFin) continue;
+
             $label = self::norm(self::g($grid, $r, 1));
             $valor = self::g($grid, $r, 2);
 
-            // 1. Exacta primero
-            if (isset($exactMap[$label]) && !isset($cpu[$exactMap[$label]])) {
+            // Ignorar etiquetas que son encabezados de sección o contienen "ENVIA"
+            if (in_array($label, $SECCIONES_PRINCIPALES)) continue;
+            if (strpos($label, 'ENVIA') !== false) continue;
+
+            // 1. Coincidencia exacta primero
+            if (isset($exactMap[$label]) && !isset($datos[$exactMap[$label]])) {
                 $v = self::val($valor);
                 if ($v !== null) {
-                    $cpu[$exactMap[$label]] = $v;
+                    $datos[$exactMap[$label]] = $v;
                 }
                 continue;
             }
 
-            // 2. Parcial
+            // 2. Coincidencia parcial
             foreach ($labelMap as $patron => $campo) {
-                if (strpos($label, $patron) !== false && !isset($cpu[$campo])) {
+                if (strpos($label, $patron) !== false && !isset($datos[$campo])) {
                     $v = self::val($valor);
                     if ($v !== null) {
-                        $cpu[$campo] = $v;
+                        $datos[$campo] = $v;
                     }
                     break;
                 }
             }
         }
 
-        return $cpu;
+        // Normalizar: disco_duro y almacenamiento son lo mismo
+        if (!isset($datos['disco_duro']) && isset($datos['almacenamiento'])) {
+            $datos['disco_duro'] = $datos['almacenamiento'];
+        }
+
+        // Normalizar: sistema_operativo y windows son lo mismo conceptualmente
+        if (!isset($datos['windows']) && isset($datos['sistema_operativo'])) {
+            $so = $datos['sistema_operativo'];
+            if (isset($datos['version'])) {
+                $so .= ' ' . $datos['version'];
+            }
+            $datos['windows'] = $so;
+        }
+
+        return $datos;
     }
 
-    private static function parseAccesoriosIzquierda(array $grid) {
-        $accesorios = [];
+    // ─────────────────────────────────────────────────────────────
+    // ACCESORIOS IZQUIERDA (col B/C): Teclado, Red, Teléfono
+    // ─────────────────────────────────────────────────────────────
+    private static function parseAccesoriosIzquierda(array $grid, $despuesDe) {
+        $accesorios   = [];
         $seccionesAcc = [
             'TECLADO'                 => 'Teclado',
             'TARJETA RED INALAMBRICA' => 'Tarjeta Red Inalambrica',
@@ -273,9 +343,7 @@ class ActivoController {
 
         $posiciones = [];
         foreach ($grid as $r => $row) {
-            if (!isset($row[1])) {
-                continue;
-            }
+            if (!isset($row[1])) continue;
             $norm = self::norm($row[1]);
             foreach ($seccionesAcc as $patron => $nombre) {
                 if (strpos($norm, $patron) !== false && !isset($posiciones[$nombre])) {
@@ -293,36 +361,23 @@ class ActivoController {
             $rowStart = $inicios[$i];
             $rowEnd   = ($i + 1 < $total) ? $inicios[$i + 1] : PHP_INT_MAX;
 
-            $datos = [
-                'tipo'       => $nombre,
-                'serial'     => null,
-                'referencia' => null,
-                'marca'      => null,
-                'mac'        => null,
-            ];
+            $datos = ['tipo' => $nombre, 'serial' => null, 'referencia' => null, 'marca' => null, 'mac' => null];
 
             foreach ($grid as $r => $row) {
-                if ($r <= $rowStart || $r >= $rowEnd) {
-                    continue;
-                }
+                if ($r <= $rowStart || $r >= $rowEnd) continue;
                 $label = self::norm(self::g($grid, $r, 1));
                 $valor = self::g($grid, $r, 2);
                 foreach ($labelMap as $patron => $campo) {
                     if (strpos($label, $patron) !== false && $datos[$campo] === null) {
                         $v = self::val($valor);
-                        if ($v !== null) {
-                            $datos[$campo] = $v;
-                        }
+                        if ($v !== null) $datos[$campo] = $v;
                         break;
                     }
                 }
             }
 
             if ($datos['serial'] !== null || $datos['referencia'] !== null || $datos['marca'] !== null) {
-                $ref = $datos['referencia'];
-                if ($ref === null) {
-                    $ref = $datos['marca'];
-                }
+                $ref = $datos['referencia'] !== null ? $datos['referencia'] : $datos['marca'];
                 $accesorios[] = [
                     'tipo'       => $datos['tipo'],
                     'serial'     => $datos['serial']     !== null ? $datos['serial'] : '',
@@ -336,9 +391,12 @@ class ActivoController {
         return $accesorios;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // ACCESORIOS DERECHA (col E=4 / F=5)
+    // ─────────────────────────────────────────────────────────────
     private static function parseAccesoriosDerecha(array $grid) {
         $accesorios   = [];
-        $seccionesAcc = ['LECTOR', 'MONITOR', 'MOUSE', 'UPS', 'IMPRESORA'];
+        $seccionesAcc = ['LECTOR', 'BASE LECTOR', 'MONITOR', 'MOUSE', 'UPS', 'IMPRESORA'];
         $labelMap     = [
             'MARCA'      => 'marca',
             'REFERENCIA' => 'referencia',
@@ -367,26 +425,17 @@ class ActivoController {
             $rowStart = $inicios[$i];
             $rowEnd   = ($i + 1 < $total) ? $inicios[$i + 1] : PHP_INT_MAX;
 
-            $datos = [
-                'tipo'       => ucfirst(strtolower($nombre)),
-                'serial'     => null,
-                'referencia' => null,
-                'marca'      => null,
-                'placa'      => null,
-            ];
+            $datos = ['tipo' => ucfirst(strtolower($nombre)), 'serial' => null, 'referencia' => null, 'marca' => null, 'placa' => null];
 
             foreach ($grid as $r => $row) {
-                if ($r <= $rowStart || $r >= $rowEnd) {
-                    continue;
-                }
+                if ($r <= $rowStart || $r >= $rowEnd) continue;
                 $label = self::norm(self::g($grid, $r, 4));
                 $valor = self::g($grid, $r, 5);
+                if (strpos($label, 'ENVIA') !== false) continue;
                 foreach ($labelMap as $patron => $campo) {
                     if (strpos($label, $patron) !== false && $datos[$campo] === null) {
                         $v = self::val($valor);
-                        if ($v !== null) {
-                            $datos[$campo] = $v;
-                        }
+                        if ($v !== null) $datos[$campo] = $v;
                         break;
                     }
                 }
@@ -397,10 +446,7 @@ class ActivoController {
             $marcaValida = $datos['marca'] !== null && !self::isEmpty($datos['marca']);
 
             if ($tieneSerial || ($tieneRef && $marcaValida)) {
-                $ref = $datos['referencia'];
-                if ($ref === null) {
-                    $ref = $datos['marca'];
-                }
+                $ref = $datos['referencia'] !== null ? $datos['referencia'] : $datos['marca'];
                 $accesorios[] = [
                     'tipo'       => $datos['tipo'],
                     'serial'     => $datos['serial'] !== null ? $datos['serial'] : '',
@@ -414,6 +460,9 @@ class ActivoController {
         return $accesorios;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // GUARDAR ACTIVO
+    // ─────────────────────────────────────────────────────────────
     public static function store($postData) {
         try {
             $db = Database::conectar();
@@ -488,7 +537,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
         try {
             if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-                echo json_encode(['success' => false, 'msg' => 'Error al subir el archivo. Codigo: ' . (isset($_FILES['file']['error']) ? $_FILES['file']['error'] : 'sin archivo')]);
+                echo json_encode(['success' => false, 'msg' => 'Error al subir el archivo.']);
                 exit();
             }
             echo json_encode(ActivoController::analizarExcel($_FILES['file']['tmp_name']));
