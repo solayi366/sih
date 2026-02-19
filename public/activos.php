@@ -72,7 +72,9 @@ function qStr(array $over = []): string {
         .row-expand.open .toggle-icon { transform: rotate(90deg); }
         .tabla-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .fbtn        { transition: all .15s; }
-        .fbtn.activo { outline: 2px solid currentColor; outline-offset: 2px; }
+        .fbtn.activo { box-shadow: 0 0 0 2px currentColor; }
+        .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden">
@@ -83,124 +85,130 @@ function qStr(array $over = []): string {
         <div class="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 w-full">
             <div class="max-w-[1700px] mx-auto">
 
-                <!-- CABECERA -->
-                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
-                    <div>
-                        <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Inventario de Activos
-                        </h1>
-                        <p class="text-slate-500 text-sm font-medium mt-0.5">
-                            Activos principales y periféricos asociados.
-                            <?php if ($buscar !== ''): ?>
-                                <span class="ml-2 text-brand-600 font-bold">
-                                    <?= $res['total_registros'] ?> resultado(s) para
-                                    "<em><?= htmlspecialchars($buscar) ?></em>"
-                                </span>
-                            <?php endif; ?>
-                        </p>
-                    </div>
+                <!-- BARRA ÚNICA: título + filtros + buscador + nuevo -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5 overflow-hidden">
 
-                    <!-- Buscador + botón nuevo -->
-                    <div class="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 w-full sm:w-auto">
-                        <div class="relative flex-1 sm:w-72">
-                            <!-- 
-                                Formulario GET: la búsqueda viaja al servidor y ejecuta
-                                la función PostgreSQL con ILIKE sobre todos los campos.
-                                Preserva filtro de tipo y periférico activos.
-                            -->
-                            <form id="formBuscar" method="GET" action="">
-                                <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
-                                <input type="hidden" name="peri"   value="<?= htmlspecialchars($filtro_peri) ?>">
-                                <input type="hidden" name="page"   value="1">
-                                <input
-                                    type="text"
-                                    name="buscar"
-                                    id="searchInput"
-                                    value="<?= htmlspecialchars($buscar) ?>"
-                                    placeholder="Buscar serial, QR, marca, área…"
-                                    oninput="debounceBuscar()"
-                                    autocomplete="off"
-                                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm shadow-sm outline-none focus:border-brand-600 transition-all">
-                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                    <!-- Fila superior: título + buscador + botón nuevo -->
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 border-b border-slate-100">
+
+                        <!-- Título -->
+                        <div class="flex-1 min-w-0">
+                            <h1 class="text-base font-extrabold text-slate-900 tracking-tight leading-none">
+                                Inventario de Activos
+                            </h1>
+                            <p class="text-slate-400 text-[11px] font-medium mt-0.5 truncate">
                                 <?php if ($buscar !== ''): ?>
-                                <a href="<?= qStr(['buscar'=>'', 'page'=>1]) ?>"
-                                   class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs"
-                                   title="Limpiar búsqueda">
-                                    <i class="fas fa-times"></i>
-                                </a>
+                                    <span class="text-brand-600 font-bold">
+                                        <?= $res['total_registros'] ?> resultado(s) para "<em><?= htmlspecialchars($buscar) ?></em>"
+                                    </span>
+                                <?php else: ?>
+                                    Activos principales y periféricos asociados.
                                 <?php endif; ?>
-                            </form>
+                            </p>
                         </div>
-                        <a href="crear_activo.php"
-                           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all whitespace-nowrap">
-                            <i class="fas fa-plus"></i>
-                            <span>Nuevo Activo</span>
-                        </a>
-                    </div>
-                </div>
 
-                <!-- FILTROS  — todos son enlaces que recargan con GET -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 sm:p-4 mb-5 flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center sm:divide-x sm:divide-slate-200">
+                        <!-- Buscador + botón: fila completa en móvil, compacto en desktop -->
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
 
-                    <!-- Grupo 1: Tipo de activo principal -->
-                    <div class="sm:pr-5 flex-shrink-0">
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Tipo de dispositivo</p>
-                        <div class="flex flex-wrap gap-1.5">
-                            <?php
-                            $principales = [
-                                ['v'=>'todos',      'l'=>'Todos',      'i'=>'fa-layer-group',          'c'=>'bg-slate-800 text-white'],
-                                ['v'=>'computador', 'l'=>'Computador', 'i'=>'fa-desktop',              'c'=>'bg-indigo-50 text-indigo-600'],
-                                ['v'=>'laptop',     'l'=>'Laptop',     'i'=>'fa-laptop',               'c'=>'bg-blue-50 text-blue-600'],
-                                ['v'=>'tablet',     'l'=>'Tablet',     'i'=>'fa-tablet-screen-button', 'c'=>'bg-cyan-50 text-cyan-600'],
-                            ];
-                            foreach ($principales as $b):
-                                $activo = ($filtro === $b['v']) ? 'activo' : '';
-                            ?>
-                            <a href="<?= qStr(['filtro'=>$b['v'], 'page'=>1]) ?>"
-                               class="fbtn <?= $b['c'] ?> <?= $activo ?> inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold hover:opacity-80">
-                                <i class="fas <?= $b['i'] ?>"></i>
-                                <span class="hidden xs:inline"><?= $b['l'] ?></span>
+                            <!-- Buscador -->
+                            <div class="relative flex-1 sm:w-64 sm:flex-none">
+                                <form id="formBuscar" method="GET" action="">
+                                    <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
+                                    <input type="hidden" name="peri"   value="<?= htmlspecialchars($filtro_peri) ?>">
+                                    <input type="hidden" name="page"   value="1">
+                                    <input
+                                        type="text"
+                                        name="buscar"
+                                        id="searchInput"
+                                        value="<?= htmlspecialchars($buscar) ?>"
+                                        placeholder="Buscar serial, QR, marca…"
+                                        oninput="debounceBuscar()"
+                                        autocomplete="off"
+                                        class="w-full pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-brand-600 focus:bg-white transition-all">
+                                    <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+                                    <?php if ($buscar !== ''): ?>
+                                    <a href="<?= qStr(['buscar'=>'', 'page'=>1]) ?>"
+                                       class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-[10px]"
+                                       title="Limpiar búsqueda">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                    <?php endif; ?>
+                                </form>
+                            </div>
+
+                            <!-- Botón nuevo -->
+                            <a href="crear_activo.php"
+                               class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm transition-all"
+                               title="Nuevo Activo">
+                                <i class="fas fa-plus text-xs"></i>
                             </a>
-                            <?php endforeach; ?>
                         </div>
+
                     </div>
 
-                    <!-- Grupo 2: Periférico asociado -->
-                    <div class="sm:pl-5 flex-1">
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Filtrar por periférico</p>
-                        <div class="flex flex-wrap gap-1.5">
-                            <?php
-                            $perifericos_filtros = [
-                                ['v'=>'todos-peri', 'l'=>'Todos',     'i'=>'fa-check-double',   'c'=>'bg-slate-100 text-slate-600'],
-                                ['v'=>'mouse',      'l'=>'Mouse',     'i'=>'fa-computer-mouse', 'c'=>'bg-emerald-50 text-emerald-600'],
-                                ['v'=>'teclado',    'l'=>'Teclado',   'i'=>'fa-keyboard',       'c'=>'bg-amber-50 text-amber-600'],
-                                ['v'=>'lector',     'l'=>'Lector',    'i'=>'fa-barcode',        'c'=>'bg-rose-50 text-rose-600'],
-                                ['v'=>'monitor',    'l'=>'Monitor',   'i'=>'fa-tv',             'c'=>'bg-purple-50 text-purple-600'],
-                                ['v'=>'impresora',  'l'=>'Impresora', 'i'=>'fa-print',          'c'=>'bg-orange-50 text-orange-600'],
-                            ];
-                            foreach ($perifericos_filtros as $b):
-                                $activo = ($filtro_peri === $b['v']) ? 'activo' : '';
-                            ?>
-                            <a href="<?= qStr(['peri'=>$b['v'], 'page'=>1]) ?>"
-                               class="fbtn <?= $b['c'] ?> <?= $activo ?> inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold hover:opacity-80">
-                                <i class="fas <?= $b['i'] ?>"></i>
-                                <span class="hidden xs:inline"><?= $b['l'] ?></span>
+                    <!-- Fila inferior: filtros -->
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center sm:divide-x sm:divide-slate-100 px-4 py-3">
+
+                        <!-- Grupo 1: Tipo de activo principal -->
+                        <div class="sm:pr-5 flex-shrink-0">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Tipo de dispositivo</p>
+                            <div class="flex gap-1.5 overflow-x-auto py-1 px-1 no-scrollbar">
+                                <?php
+                                $principales = [
+                                    ['v'=>'todos',      'l'=>'Todos',      'i'=>'fa-layer-group',          'c'=>'bg-slate-800 text-white'],
+                                    ['v'=>'computador', 'l'=>'Computador', 'i'=>'fa-desktop',              'c'=>'bg-indigo-50 text-indigo-600'],
+                                    ['v'=>'laptop',     'l'=>'Laptop',     'i'=>'fa-laptop',               'c'=>'bg-blue-50 text-blue-600'],
+                                    ['v'=>'tablet',     'l'=>'Tablet',     'i'=>'fa-tablet-screen-button', 'c'=>'bg-cyan-50 text-cyan-600'],
+                                ];
+                                foreach ($principales as $b):
+                                    $activo = ($filtro === $b['v']) ? 'activo' : '';
+                                ?>
+                                <a href="<?= qStr(['filtro'=>$b['v'], 'page'=>1]) ?>"
+                                   class="fbtn <?= $b['c'] ?> <?= $activo ?> flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold hover:opacity-80"
+                                   title="<?= $b['l'] ?>">
+                                    <i class="fas <?= $b['i'] ?>"></i>
+                                </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Grupo 2: Periférico asociado -->
+                        <div class="sm:pl-5 flex-1 min-w-0">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Filtrar por periférico</p>
+                            <div class="flex gap-1.5 overflow-x-auto py-1 px-1 no-scrollbar">
+                                <?php
+                                $perifericos_filtros = [
+                                    ['v'=>'todos-peri', 'l'=>'Todos',     'i'=>'fa-check-double',   'c'=>'bg-slate-100 text-slate-600'],
+                                    ['v'=>'mouse',      'l'=>'Mouse',     'i'=>'fa-computer-mouse', 'c'=>'bg-emerald-50 text-emerald-600'],
+                                    ['v'=>'teclado',    'l'=>'Teclado',   'i'=>'fa-keyboard',       'c'=>'bg-amber-50 text-amber-600'],
+                                    ['v'=>'lector',     'l'=>'Lector',    'i'=>'fa-barcode',        'c'=>'bg-rose-50 text-rose-600'],
+                                    ['v'=>'monitor',    'l'=>'Monitor',   'i'=>'fa-tv',             'c'=>'bg-purple-50 text-purple-600'],
+                                    ['v'=>'impresora',  'l'=>'Impresora', 'i'=>'fa-print',          'c'=>'bg-orange-50 text-orange-600'],
+                                ];
+                                foreach ($perifericos_filtros as $b):
+                                    $activo = ($filtro_peri === $b['v']) ? 'activo' : '';
+                                ?>
+                                <a href="<?= qStr(['peri'=>$b['v'], 'page'=>1]) ?>"
+                                   class="fbtn <?= $b['c'] ?> <?= $activo ?> flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold hover:opacity-80"
+                                   title="<?= $b['l'] ?>">
+                                    <i class="fas <?= $b['i'] ?>"></i>
+                                </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Botón limpiar todo (solo visible si hay algo activo) -->
+                        <?php if ($filtro !== 'todos' || $filtro_peri !== 'todos-peri' || $buscar !== ''): ?>
+                        <div class="sm:pl-5 flex-shrink-0">
+                            <a href="activos.php"
+                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-500 hover:bg-red-100 transition-all">
+                                <i class="fas fa-filter-circle-xmark"></i>
+                                <span>Limpiar filtros</span>
                             </a>
-                            <?php endforeach; ?>
                         </div>
-                    </div>
+                        <?php endif; ?>
 
-                    <!-- Botón limpiar todo (solo visible si hay algo activo) -->
-                    <?php if ($filtro !== 'todos' || $filtro_peri !== 'todos-peri' || $buscar !== ''): ?>
-                    <div class="sm:pl-5 flex-shrink-0">
-                        <a href="activos.php"
-                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-500 hover:bg-red-100 transition-all">
-                            <i class="fas fa-filter-circle-xmark"></i>
-                            <span>Limpiar filtros</span>
-                        </a>
                     </div>
-                    <?php endif; ?>
-
                 </div>
 
                 <!-- TABLA -->
