@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Reporte Recibido! | Mesa de Ayuda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-emerald-500 min-h-screen flex items-center justify-center p-6">
+    <?php $ticket = htmlspecialchars($_GET['ticket'] ?? ''); ?>
+    <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-emerald-400"></div>
+
+        <div class="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500">
+            <i class="fas fa-check-circle text-6xl animate-bounce"></i>
+        </div>
+
+        <h1 class="text-2xl font-black text-slate-800 mb-2">¡Recibido!</h1>
+        <p class="text-slate-500 text-sm font-medium mb-2">
+            Tu reporte fue creado exitosamente.
+        </p>
+        <?php if ($ticket): ?>
+        <p class="text-slate-400 text-xs mb-8">
+            Número de ticket: <span class="font-mono font-black text-slate-700">#<?= $ticket ?></span>
+        </p>
+        <?php endif; ?>
+        <p class="text-slate-400 text-xs mb-8">El equipo de tecnología ya recibió la notificación.</p>
+
+        <a href="portal_reportes.php"
+           class="block w-full py-4 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-slate-700 transition-all">
+            Volver al Inicio
+        </a>
+    </div>
+</body>
+</html>

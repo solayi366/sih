@@ -6,7 +6,6 @@ $inicial_usuario = strtoupper(substr($usuario_nombre, 0, 1));
 function isActive($page, $current_page) {
     return ($page == $current_page) ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50 hover:text-brand-700';
 }
-// Detectar si estamos en alguna página de parámetros para mantener el menú abierto
 $is_param_page = strpos($current_page, 'parametros_') !== false;
 ?>
 
@@ -56,6 +55,12 @@ $is_param_page = strpos($current_page, 'parametros_') !== false;
 
         <a href="novedades.php" class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('novedades.php', $current_page); ?>">
             <i class="fas fa-headset nav-icon w-6 text-center"></i><span class="sidebar-text ml-3">Mesa de Ayuda</span>
+        </a>
+
+        <!-- ── SECCIÓN HERRAMIENTAS ── -->
+        <p class="section-title px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-6">Herramientas</p>
+        <a href="regenerar_qr.php" class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('regenerar_qr.php', $current_page); ?>">
+            <i class="fas fa-qrcode nav-icon w-6 text-center"></i><span class="sidebar-text ml-3">Regenerar QR</span>
         </a>
     </nav>
 

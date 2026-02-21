@@ -3,6 +3,10 @@ require_once '../controllers/activoVerController.php';
 $res    = ActivoVerController::ver();
 $activo = $res['activo'];
 $hijos  = $res['hijos'];
+
+// ─── Soportar acceso por código QR escaneado ─────────────────────────────────
+// Si alguien escanea el QR físico, llegará con ?qr=QR-XXXXXX en lugar de ?id=N
+// El controlador ya maneja esto, pero aseguramos el fallback aquí.
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -33,12 +37,37 @@ $hijos  = $res['hijos'];
         .red-gradient {
             background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
         }
+
+        /* ── Estilos exclusivos para impresión de etiqueta QR ── */
+        @media print {
+            body > *:not(#printArea) { display: none !important; }
+            #printArea {
+                display: flex !important;
+                position: fixed;
+                inset: 0;
+                background: white;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            }
+        }
+
+        /* Animación de carga del QR */
+        .qr-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden"
       style="background: radial-gradient(circle at top left, #fff1f2, #f8fafc);">
 
-    <?php include '../includes/sidebar.php'; ?>
+    <?php if (isset($_SESSION['user_id'])) include '../includes/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full min-w-0">
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 w-full">
@@ -61,6 +90,7 @@ $hijos  = $res['hijos'];
                     </div>
 
                     <div class="flex gap-3 w-full md:w-auto">
+                        <?php if (isset($_SESSION['user_id'])): ?>
                         <a href="activos.php"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-2xl transition-all shadow-sm font-bold text-sm"
                            title="Volver al inventario">
@@ -71,9 +101,10 @@ $hijos  = $res['hijos'];
                            title="Editar activo">
                             <i class="fas fa-pen-nib text-brand-500"></i>
                         </a>
+                        <?php endif; ?>
                         <button onclick="window.print()"
                                 class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl transition-all shadow-lg font-bold text-sm"
-                                title="Imprimir ficha">
+                                title="Imprimir ficha completa">
                             <i class="fas fa-print"></i>
                         </button>
                     </div>
@@ -85,24 +116,70 @@ $hijos  = $res['hijos'];
                     <!-- ════ COLUMNA IZQUIERDA (4 cols) ════ -->
                     <div class="lg:col-span-4 space-y-6">
 
-                        <!-- Tarjeta QR + estado -->
-                        <div class="glass-card rounded-[2.5rem] p-10 shadow-2xl shadow-brand-900/5 text-center relative overflow-hidden group border-2 border-brand-100">
+                        <!-- ╔══════════════════════════════════╗ -->
+                        <!-- ║      TARJETA QR (NUEVA)          ║ -->
+                        <!-- ╚══════════════════════════════════╝ -->
+                        <div class="glass-card rounded-[2.5rem] p-8 shadow-2xl shadow-brand-900/5 text-center relative overflow-hidden group border-2 border-brand-100">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 opacity-50"></div>
 
                             <div class="relative z-10">
                                 <!-- Icono del tipo de equipo -->
-                                <div class="inline-block p-6 bg-white rounded-[2rem] shadow-xl border-2 border-brand-50 mb-6">
-                                    <div class="w-28 h-28 flex items-center justify-center">
+                                <div class="inline-block p-4 bg-white rounded-[2rem] shadow-xl border-2 border-brand-50 mb-5">
+                                    <div class="w-20 h-20 flex items-center justify-center">
                                         <?= iconoTipoGrande($activo['r_tipo']) ?>
                                     </div>
                                 </div>
 
-                                <p class="text-xs font-black text-brand-300 uppercase tracking-widest mb-1">
-                                    Código Único
+                                <p class="text-xs font-black text-brand-300 uppercase tracking-widest mb-3">
+                                    Código QR del Activo
                                 </p>
-                                <h2 class="text-3xl font-black text-slate-800 mb-6 tracking-tighter font-mono">
+
+                                <!-- ── IMAGEN QR ── -->
+                                <div class="flex justify-center mb-3">
+                                    <div class="relative">
+                                        <!-- Placeholder shimmer mientras carga -->
+                                        <div id="qrShimmer"
+                                             class="qr-shimmer w-[200px] h-[200px] rounded-2xl absolute inset-0 z-10">
+                                        </div>
+                                        <!-- Imagen QR real -->
+                                        <img id="qrImage"
+                                             src="../controllers/qrController.php?codigo=<?= urlencode($activo['r_qr'] ?? '') ?>&size=200"
+                                             alt="QR <?= htmlspecialchars($activo['r_qr'] ?? '') ?>"
+                                             width="200" height="200"
+                                             class="rounded-2xl border-4 border-white shadow-xl relative z-0 opacity-0 transition-opacity duration-500"
+                                             onload="this.classList.remove('opacity-0'); document.getElementById('qrShimmer').style.display='none';"
+                                             onerror="document.getElementById('qrShimmer').style.display='none'; document.getElementById('qrFallback').style.display='flex';">
+                                        <!-- Fallback si falla la imagen -->
+                                        <div id="qrFallback"
+                                             class="hidden w-[200px] h-[200px] rounded-2xl border-4 border-dashed border-brand-200 bg-brand-50 items-center justify-center flex-col gap-2">
+                                            <i class="fas fa-qrcode text-4xl text-brand-300"></i>
+                                            <span class="text-xs text-brand-400 font-bold">Sin conexión</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Código texto debajo del QR -->
+                                <p class="font-mono font-black text-slate-700 text-lg tracking-tighter mb-5">
                                     <?= htmlspecialchars($activo['r_qr'] ?? '—') ?>
-                                </h2>
+                                </p>
+
+                                <!-- ── BOTONES QR ── -->
+                                <div class="flex gap-2 justify-center mb-5">
+                                    <!-- Descargar PNG -->
+                                    <a href="../controllers/qrController.php?codigo=<?= urlencode($activo['r_qr'] ?? '') ?>&size=400&download=1"
+                                       class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black transition-all shadow-lg"
+                                       title="Descargar imagen QR en alta resolución">
+                                        <i class="fas fa-download"></i>
+                                        Descargar
+                                    </a>
+                                    <!-- Imprimir etiqueta -->
+                                    <button onclick="imprimirEtiqueta()"
+                                            class="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black transition-all shadow-lg shadow-brand-500/30"
+                                            title="Imprimir etiqueta adhesiva con QR">
+                                        <i class="fas fa-tag"></i>
+                                        Etiqueta
+                                    </button>
+                                </div>
 
                                 <!-- Badge de estado -->
                                 <div class="inline-flex items-center">
@@ -123,6 +200,7 @@ $hijos  = $res['hijos'];
                                 </div>
                             </div>
                         </div>
+                        <!-- ╚══════════════════════════════════╝ -->
 
                         <!-- Tarjeta Custodio -->
                         <div class="red-gradient rounded-[2.5rem] p-8 text-white shadow-xl shadow-brand-900/20 relative overflow-hidden border-2 border-brand-700">
@@ -281,7 +359,7 @@ $hijos  = $res['hijos'];
                                     <thead class="bg-slate-50 border-b-2 border-slate-100">
                                         <tr>
                                             <th class="px-10 py-4 text-[10px] font-black text-slate-400 uppercase">
-                                                Identificador
+                                                QR / Identificador
                                             </th>
                                             <th class="px-10 py-4 text-[10px] font-black text-slate-400 uppercase">
                                                 Descripción
@@ -295,11 +373,20 @@ $hijos  = $res['hijos'];
                                         <?php foreach ($hijos as $hijo): ?>
                                         <tr class="hover:bg-brand-50/20 transition-colors group">
                                             <td class="px-10 py-5">
-                                                <div class="font-mono font-black text-brand-600 leading-tight">
-                                                    <?= htmlspecialchars($hijo['r_qr'] ?? '—') ?>
-                                                </div>
-                                                <div class="text-[10px] text-slate-400 font-bold mt-0.5">
-                                                    <?= htmlspecialchars($hijo['r_tipo']) ?>
+                                                <!-- Mini QR del periférico -->
+                                                <div class="flex items-center gap-3">
+                                                    <img src="../controllers/qrController.php?codigo=<?= urlencode($hijo['r_qr'] ?? '') ?>&size=60"
+                                                         alt="QR <?= htmlspecialchars($hijo['r_qr'] ?? '') ?>"
+                                                         width="48" height="48"
+                                                         class="rounded-lg border-2 border-slate-100 shadow-sm flex-shrink-0">
+                                                    <div>
+                                                        <div class="font-mono font-black text-brand-600 text-xs leading-tight">
+                                                            <?= htmlspecialchars($hijo['r_qr'] ?? '—') ?>
+                                                        </div>
+                                                        <div class="text-[10px] text-slate-400 font-bold mt-0.5">
+                                                            <?= htmlspecialchars($hijo['r_tipo']) ?>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="px-10 py-5">
@@ -314,11 +401,20 @@ $hijos  = $res['hijos'];
                                                 </div>
                                             </td>
                                             <td class="px-10 py-5 text-right">
-                                                <a href="ver.php?id=<?= $hijo['r_id'] ?>"
-                                                   class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-all border-2 border-transparent"
-                                                   title="Ver ficha del periférico">
-                                                    <i class="fas fa-eye text-xs"></i>
-                                                </a>
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <!-- Descargar QR del hijo -->
+                                                    <a href="../controllers/qrController.php?codigo=<?= urlencode($hijo['r_qr'] ?? '') ?>&size=400&download=1"
+                                                       class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 text-slate-400 hover:bg-slate-200 transition-all border-2 border-transparent"
+                                                       title="Descargar QR">
+                                                        <i class="fas fa-download text-xs"></i>
+                                                    </a>
+                                                    <!-- Ver ficha -->
+                                                    <a href="ver.php?id=<?= $hijo['r_id'] ?>"
+                                                       class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-all border-2 border-transparent"
+                                                       title="Ver ficha del periférico">
+                                                        <i class="fas fa-eye text-xs"></i>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
@@ -367,6 +463,59 @@ $hijos  = $res['hijos'];
         </div>
     </main>
 
+    <!-- ╔═══════════════════════════════════════════════════════╗ -->
+    <!-- ║   ÁREA DE IMPRESIÓN DE ETIQUETA QR (oculta en web)   ║ -->
+    <!-- ╚═══════════════════════════════════════════════════════╝ -->
+    <div id="printArea" style="display:none;">
+        <div style="
+            width: 62mm;
+            padding: 6mm;
+            border: 1.5px solid #e11d48;
+            border-radius: 4mm;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        ">
+            <!-- Logo / título sistema -->
+            <div style="font-size: 8pt; font-weight: 900; color: #e11d48; letter-spacing: 2px; margin-bottom: 3mm; text-transform: uppercase;">
+                SIH_QR — Inventario
+            </div>
+
+            <!-- Imagen QR grande -->
+            <img id="printQrImg"
+                 src="../controllers/qrController.php?codigo=<?= urlencode($activo['r_qr'] ?? '') ?>&size=300"
+                 alt="QR"
+                 style="width: 45mm; height: 45mm; display: block; margin: 0 auto 3mm;">
+
+            <!-- Código -->
+            <div style="font-size: 10pt; font-weight: 900; color: #1a1a2e; font-family: 'Courier New', monospace; letter-spacing: 1px; margin-bottom: 2mm;">
+                <?= htmlspecialchars($activo['r_qr'] ?? '') ?>
+            </div>
+
+            <!-- Info del activo -->
+            <div style="font-size: 7.5pt; color: #555; margin-bottom: 1mm;">
+                <strong><?= htmlspecialchars($activo['r_tipo']) ?></strong>
+                · <?= htmlspecialchars($activo['r_marca']) ?>
+            </div>
+            <?php if ($activo['r_serial']): ?>
+            <div style="font-size: 6.5pt; color: #888; font-family: 'Courier New', monospace;">
+                S/N: <?= htmlspecialchars($activo['r_serial']) ?>
+            </div>
+            <?php endif; ?>
+            <?php if ($activo['r_responsable']): ?>
+            <div style="font-size: 6.5pt; color: #888; margin-top: 1mm;">
+                <?= htmlspecialchars($activo['r_responsable']) ?>
+            </div>
+            <?php endif; ?>
+
+            <!-- Pie -->
+            <div style="font-size: 5.5pt; color: #ccc; margin-top: 3mm; border-top: 0.5px solid #eee; padding-top: 2mm;">
+                Escanea para ver ficha técnica
+            </div>
+        </div>
+    </div>
+
     <!-- Toast de notificaciones -->
     <div id="liveToast" class="fixed bottom-8 right-8 translate-y-24 opacity-0 transition-all duration-700 z-[100]">
         <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-2xl flex items-center gap-4 min-w-[320px] border-2 border-white/10">
@@ -379,6 +528,7 @@ $hijos  = $res['hijos'];
 
     <script src="../assets/js/sidebar_logic.js"></script>
     <script>
+        // ── Toast de URL params ──────────────────────────────────────────────
         window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);
             if (params.has('msg')) {
@@ -397,6 +547,33 @@ $hijos  = $res['hijos'];
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
+
+        // ── Imprimir etiqueta QR ─────────────────────────────────────────────
+        function imprimirEtiqueta() {
+            const printArea = document.getElementById('printArea');
+            const printImg  = document.getElementById('printQrImg');
+
+            // Esperar a que la imagen esté cargada antes de imprimir
+            if (!printImg.complete) {
+                const toast   = document.getElementById('liveToast');
+                const message = document.getElementById('toastMessage');
+                const icon    = document.getElementById('toastIcon');
+                message.textContent = 'Cargando imagen QR…';
+                icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                toast.classList.remove('translate-y-24', 'opacity-0');
+
+                printImg.onload = () => {
+                    toast.classList.add('translate-y-24', 'opacity-0');
+                    printArea.style.display = 'flex';
+                    window.print();
+                    printArea.style.display = 'none';
+                };
+            } else {
+                printArea.style.display = 'flex';
+                window.print();
+                printArea.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
