@@ -367,31 +367,16 @@ try {
 
 
                             <!-- ── Contraseña (solo admin) ── -->
-                            <?php if ($es_admin): ?>
-                            <div class="mt-6 pt-6 border-t-2 border-slate-100">
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                                    <i class="fas fa-lock text-amber-400"></i> Contraseña del Equipo
-                                    <span class="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-black">Solo admin</span>
-                                </span>
-                                <?php if (!empty($activo['r_password'])): ?>
-                                <div class="flex items-center gap-3 mt-2">
-                                    <p class="font-mono font-bold text-slate-700 text-sm" id="pwd-display">••••••••</p>
-                                    <button type="button" onclick="togglePwdVer()"
-                                            class="text-[10px] text-brand-600 font-black hover:underline flex items-center gap-1">
-                                        <i class="fas fa-eye text-xs" id="pwd-eye-icon"></i>
-                                        <span id="pwd-eye-label">Mostrar</span>
-                                    </button>
+                            <?php if (isset($_SESSION['es_admin']) && $_SESSION['es_admin']): ?>
+                            <div>
+                                <p class="text-[9px] font-black text-brand-600 uppercase flex items-center gap-1"><i class="fas fa-lock"></i> Contraseña</p>
+                                <div class="flex items-center gap-2">
+                                    <input type="password" id="p_field" readonly value="<?= $activo['r_pass_activo'] ?>" class="bg-transparent border-none p-0 font-bold font-mono outline-none w-24">
+                                    <button onclick="toggleP()" class="text-slate-400 hover:text-brand-600 no-print"><i id="p_icon" class="fas fa-eye"></i></button>
                                 </div>
-                                <div id="pwd-actual" class="hidden font-mono font-bold text-slate-800 text-base mt-1 select-all">
-                                    <?= htmlspecialchars($activo['r_password']) ?>
-                                </div>
-                                <?php else: ?>
-                                <p class="mt-2 text-sm text-slate-400 italic">Sin contraseña registrada —
-                                    <a href="editar.php?id=<?= $activo['r_id'] ?>" class="text-brand-600 font-bold hover:underline">Agregar desde editar</a>
-                                </p>
-                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
+
 
                             <!-- ── Campos Dinámicos (colapsable) ── -->
                             <?php if (!empty($campos_dinamicos)): ?>
