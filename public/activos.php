@@ -136,6 +136,14 @@ function qStr(array $over = []): string {
                                 </form>
                             </div>
 
+                            <!-- Botón exportar Excel -->
+                            <button onclick="document.getElementById('modalExportarExcel').classList.remove('hidden')"
+                                    class="flex-shrink-0 h-8 px-3 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all text-xs font-bold"
+                                    title="Exportar inventario a Excel">
+                                <i class="fas fa-file-excel text-xs"></i>
+                                <span class="hidden sm:inline">Excel</span>
+                            </button>
+
                             <!-- Botón nuevo -->
                             <a href="crear_activo.php"
                                class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm transition-all"
@@ -399,5 +407,176 @@ function qStr(array $over = []): string {
         timer = setTimeout(() => document.getElementById('formBuscar').submit(), 450);
     }
     </script>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- MODAL: Exportar inventario a Excel                                -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div id="modalExportarExcel"
+         class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background:rgba(15,23,42,0.55);backdrop-filter:blur(4px);">
+
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 relative animate-fade-in">
+
+            <!-- Cerrar -->
+            <button onclick="cerrarModalExport()"
+                    class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+
+            <!-- Cabecera -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-11 h-11 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                    <i class="fas fa-file-excel text-emerald-600 text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-slate-900 text-lg leading-none">Exportar a Excel</h2>
+                    <p class="text-slate-400 text-xs mt-0.5">Selecciona los tipos de activo a exportar</p>
+                </div>
+            </div>
+
+            <form id="formExportarExcel" method="GET" action="exportar.php" target="_blank">
+                <input type="hidden" name="modo" value="general">
+
+                <!-- Checkbox "Todos" -->
+                <label class="flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer transition mb-3 group">
+                    <input type="checkbox" id="chk_todos" onchange="toggleTodos(this)"
+                           class="w-5 h-5 accent-emerald-600 rounded">
+                    <span class="flex items-center gap-2 font-bold text-slate-700 text-sm">
+                        <i class="fas fa-layer-group text-slate-400 group-hover:text-emerald-500 transition"></i>
+                        Todos los activos principales
+                    </span>
+                </label>
+
+                <div class="h-px bg-slate-100 mb-3"></div>
+
+                <!-- Checkboxes por tipo — se cargan dinámicamente vía PHP -->
+                <div id="checkboxTipos" class="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    <?php
+                    // Cargar tipos disponibles directamente desde la BD
+                    try {
+                        $db_tipos = Database::conectar();
+                        $stmt_tipos = $db_tipos->query("
+                            SELECT DISTINCT t.nom_tipo
+                            FROM tab_tipos t
+                            INNER JOIN tab_activotec a ON a.id_tipoequi = t.id_tipoequi
+                            WHERE a.activo = TRUE AND a.id_padre_activo IS NULL
+                            ORDER BY t.nom_tipo
+                        ");
+                        $tipos_disp = $stmt_tipos->fetchAll(PDO::FETCH_COLUMN);
+
+                        $iconos_tipo = [
+                            'laptop'      => 'fa-laptop text-blue-500',
+                            'portátil'    => 'fa-laptop text-blue-500',
+                            'portatil'    => 'fa-laptop text-blue-500',
+                            'computador'  => 'fa-desktop text-indigo-500',
+                            'desktop'     => 'fa-desktop text-indigo-500',
+                            'pc'          => 'fa-desktop text-indigo-500',
+                            'tablet'      => 'fa-tablet-screen-button text-cyan-500',
+                            'ipad'        => 'fa-tablet-screen-button text-cyan-500',
+                            'servidor'    => 'fa-server text-rose-500',
+                            'server'      => 'fa-server text-rose-500',
+                        ];
+
+                        foreach ($tipos_disp as $tipo) {
+                            $tipo_lower = strtolower($tipo);
+                            $icono = 'fa-microchip text-slate-400';
+                            foreach ($iconos_tipo as $key => $cls) {
+                                if (str_contains($tipo_lower, $key)) { $icono = $cls; break; }
+                            }
+                            $tipo_esc = htmlspecialchars($tipo, ENT_QUOTES);
+                            echo <<<HTML
+                    <label class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50 cursor-pointer transition group chk-tipo-label">
+                        <input type="checkbox" name="tipos[]" value="{$tipo_esc}"
+                               class="chk-tipo w-4 h-4 accent-emerald-600"
+                               onchange="actualizarTodos()">
+                        <span class="flex items-center gap-2 text-slate-700 text-sm font-medium">
+                            <i class="fas {$icono} group-hover:scale-110 transition-transform"></i>
+                            {$tipo_esc}
+                        </span>
+                    </label>
+HTML;
+                        }
+                    } catch (Exception $e) {
+                        echo '<p class="text-red-500 text-sm px-2">Error al cargar tipos: ' . htmlspecialchars($e->getMessage()) . '</p>';
+                    }
+                    ?>
+                </div>
+
+                <!-- Aviso -->
+                <p id="avisoSinSeleccion" class="hidden text-amber-600 text-xs mt-3 flex items-center gap-1.5">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    Selecciona al menos un tipo o marca "Todos".
+                </p>
+
+                <!-- Botones -->
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="cerrarModalExport()"
+                            class="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="submitExport()"
+                            class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg transition flex items-center justify-center gap-2">
+                        <i class="fas fa-download"></i>
+                        Descargar Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function cerrarModalExport() {
+        document.getElementById('modalExportarExcel').classList.add('hidden');
+        // Limpiar selecciones
+        document.querySelectorAll('.chk-tipo, #chk_todos').forEach(c => c.checked = false);
+        document.getElementById('avisoSinSeleccion').classList.add('hidden');
+    }
+
+    function toggleTodos(chkTodos) {
+        document.querySelectorAll('.chk-tipo').forEach(c => {
+            c.checked = false;
+            c.disabled = chkTodos.checked;
+        });
+        document.getElementById('avisoSinSeleccion').classList.add('hidden');
+    }
+
+    function actualizarTodos() {
+        document.getElementById('chk_todos').checked = false;
+        document.getElementById('avisoSinSeleccion').classList.add('hidden');
+    }
+
+    function submitExport() {
+        const todosChk  = document.getElementById('chk_todos').checked;
+        const tiposChk  = document.querySelectorAll('.chk-tipo:checked');
+        const aviso     = document.getElementById('avisoSinSeleccion');
+
+        if (!todosChk && tiposChk.length === 0) {
+            aviso.classList.remove('hidden');
+            return;
+        }
+
+        aviso.classList.add('hidden');
+
+        // Si "Todos" está marcado, quitar todos los tipos (el controller exporta todo)
+        if (todosChk) {
+            document.querySelectorAll('.chk-tipo').forEach(c => c.checked = false);
+        }
+
+        document.getElementById('formExportarExcel').submit();
+        // Cerrar modal tras un breve delay
+        setTimeout(cerrarModalExport, 800);
+    }
+
+    // Cerrar con Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') cerrarModalExport();
+    });
+
+    // Cerrar clickeando el backdrop
+    document.getElementById('modalExportarExcel').addEventListener('click', function(e) {
+        if (e.target === this) cerrarModalExport();
+    });
+    </script>
+
 </body>
 </html>

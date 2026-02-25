@@ -7,17 +7,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
 
     try {
-        $db = Database::conectar();
+        $db   = Database::conectar();
         $stmt = $db->prepare("SELECT * FROM fun_read_usuario(NULL, :user)");
         $stmt->bindParam(':user', $username, PDO::PARAM_STR);
         $stmt->execute();
-        
+
         $user = $stmt->fetch();
 
-        if ($user && password_verify($password, $user['r_pass'])) {
-            // Login exitoso
-            $_SESSION['user_id'] = $user['r_id'];
+        // Verificamos: que exista, que la contraseña sea correcta Y que esté activo
+        if ($user && password_verify($password, $user['r_pass']) && $user['r_activo']) {
+            $_SESSION['user_id']  = $user['r_id'];
             $_SESSION['username'] = $user['r_user'];
+            $_SESSION['es_admin'] = (bool)$user['r_admin']; // r_admin ya viene de la función SQL
             header("Location: ../public/dashboard.php");
             exit();
         } else {

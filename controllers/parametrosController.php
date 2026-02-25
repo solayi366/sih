@@ -35,6 +35,126 @@ class ParametrosController {
     }
 
     /**
+     * CAMPOS DINÁMICOS: Retorna todos los campos del catálogo
+     */
+    public static function getTodosCampos() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $db = Database::conectar();
+        try {
+            return $db->query("SELECT * FROM fun_get_todos_los_campos()")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * CAMPOS DINÁMICOS: API JSON — retorna campos de un tipo específico
+     */
+    public static function apiGetCamposTipo(int $id_tipo): void {
+        header('Content-Type: application/json');
+        $db = Database::conectar();
+        try {
+            $stmt = $db->prepare("SELECT * FROM fun_get_campos_por_tipo(:id)");
+            $stmt->execute([':id' => $id_tipo]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        } catch (Exception $e) {
+            echo json_encode([]);
+        }
+        exit();
+    }
+
+    /**
+     * CAMPOS DINÁMICOS: API JSON — activa/desactiva campo en un tipo
+     */
+    public static function apiToggleCampo(): void {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'msg' => 'No autorizado']); exit();
+        }
+        $db = Database::conectar();
+        try {
+            $id_tipo   = (int)($_POST['id_tipo']   ?? 0);
+            $id_campo  = (int)($_POST['id_campo']  ?? 0);
+            $activo    = ($_POST['activo']    ?? '0') === '1';
+            $requerido = ($_POST['requerido'] ?? '0') === '1';
+            $orden     = (int)($_POST['orden'] ?? 99);
+
+            $stmt = $db->prepare("SELECT * FROM fun_toggle_campo_tipo(:tipo, :campo, :act, :req, :ord)");
+            $stmt->execute([
+                ':tipo'  => $id_tipo,
+                ':campo' => $id_campo,
+                ':act'   => $activo   ? 'true' : 'false',
+                ':req'   => $requerido ? 'true' : 'false',
+                ':ord'   => $orden,
+            ]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            $ok  = $res && str_starts_with($res['msj'], 'SUCCESS');
+            echo json_encode(['success' => $ok, 'msg' => $res['msj'] ?? 'Error']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'msg' => $e->getMessage()]);
+        }
+        exit();
+    }
+
+    /**
+     * CAMPOS DINÁMICOS: API JSON — crea un campo personalizado nuevo
+     */
+    public static function apiCrearCampo(): void {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'msg' => 'No autorizado']); exit();
+        }
+        $db = Database::conectar();
+        try {
+            $nombre    = trim($_POST['nombre']    ?? '');
+            $etiqueta  = trim($_POST['etiqueta']  ?? '');
+            $tipo_dato = trim($_POST['tipo_dato'] ?? 'texto');
+            $icono     = trim($_POST['icono']     ?? 'fa-tag');
+            $opciones  = trim($_POST['opciones']  ?? '') ?: null;
+
+            if (!$nombre || !$etiqueta) {
+                echo json_encode(['success' => false, 'msg' => 'Nombre y etiqueta son requeridos']); exit();
+            }
+            if (!preg_match('/^[a-z0-9_]+$/i', $nombre)) {
+                echo json_encode(['success' => false, 'msg' => 'Nombre técnico inválido']); exit();
+            }
+
+            $stmt = $db->prepare("SELECT * FROM fun_create_campo(:nom, :et, :tip, :ic, :op)");
+            $stmt->execute([
+                ':nom' => strtolower($nombre),
+                ':et'  => $etiqueta,
+                ':tip' => $tipo_dato,
+                ':ic'  => $icono,
+                ':op'  => $opciones,
+            ]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            $ok  = $res && $res['id_res'] > 0;
+            echo json_encode(['success' => $ok, 'id' => $res['id_res'] ?? 0, 'msg' => $res['msj'] ?? 'Error']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'msg' => $e->getMessage()]);
+        }
+        exit();
+    }
+
+    /**
+     * CAMPOS DINÁMICOS: Retorna campos de un tipo para el formulario de activo
+     */
+    public static function apiGetCamposParaFormulario(int $id_tipo): void {
+        header('Content-Type: application/json');
+        $db = Database::conectar();
+        try {
+            $stmt = $db->prepare("SELECT * FROM fun_get_campos_por_tipo(:id)");
+            $stmt->execute([':id' => $id_tipo]);
+            echo json_encode(['success' => true, 'campos' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'campos' => [], 'msg' => $e->getMessage()]);
+        }
+        exit();
+    }
+
+    /**
      * PROCESAMIENTO (STORE / UPDATE / DELETE)
      * Router unificado para todas las acciones de parámetros.
      */
@@ -187,6 +307,21 @@ class ParametrosController {
 }
 
 /**
+ * Bloque de ejecución: Endpoints GET puros (no requieren POST)
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    // ── Endpoint AJAX GET: campos de un tipo ─────────────────────────────────
+    if (isset($_GET['action']) && $_GET['action'] === 'getCamposTipo') {
+        ParametrosController::apiGetCamposTipo((int)($_GET['id_tipo'] ?? 0));
+    }
+
+    // ── Endpoint AJAX GET: campos para formulario de activo ──────────────────
+    if (isset($_GET['action']) && $_GET['action'] === 'getCamposFormulario') {
+        ParametrosController::apiGetCamposParaFormulario((int)($_GET['id_tipo'] ?? 0));
+    }
+}
+
+/**
  * Bloque de ejecución: Procesa peticiones POST y acciones DELETE vía GET
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || (isset($_GET['action']) && $_GET['action'] === 'delete')) {
@@ -233,6 +368,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || (isset($_GET['action']) && $_GET['a
             echo json_encode(['success' => false, 'msg' => 'Error: ' . $e->getMessage()]);
         }
         exit();
+    }
+
+    // ── Endpoints AJAX POST para campos dinámicos ────────────────────────────
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'toggleCampo':  ParametrosController::apiToggleCampo();  break;
+            case 'crearCampo':   ParametrosController::apiCrearCampo();   break;
+        }
     }
 
     ParametrosController::handleAction();

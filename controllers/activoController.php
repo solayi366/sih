@@ -499,7 +499,25 @@ class ActivoController {
             $resPrincipal   = $stmtAct->fetch();
             $id_padre_nuevo = $resPrincipal['id_res'];
 
-            if (!empty($postData['accesorios_json_final']) && $id_padre_nuevo > 0) {
+            // ── VERIFICAR que la función reportó éxito ────────────────────────
+            if ($id_padre_nuevo <= 0) {
+                $db->rollBack();
+                $msgError = $resPrincipal['msj'] ?? 'No se pudo registrar el activo. Verifica que el responsable, tipo y marca existan.';
+                header("Location: ../public/crear_activo.php?msg=" . urlencode($msgError) . "&tipo=danger");
+                exit();
+            }
+
+            // ── Guardar valores de campos dinámicos ───────────────────────────
+            if (!empty($postData['campos_dinamicos_json'])) {
+                $valoresDin = json_decode($postData['campos_dinamicos_json'], true);
+                if (is_array($valoresDin) && count($valoresDin) > 0) {
+                    $jsonb = json_encode($valoresDin);
+                    $stmtDin = $db->prepare("SELECT * FROM fun_save_valores_activo(:id, :vals::jsonb)");
+                    $stmtDin->execute([':id' => $id_padre_nuevo, ':vals' => $jsonb]);
+                }
+            }
+
+            if (!empty($postData['accesorios_json_final'])) {
                 $accesorios = json_decode($postData['accesorios_json_final'], true);
                 foreach ($accesorios as $acc) {
                     $qr_acc = "QR-" . strtoupper(bin2hex(random_bytes(3)));
@@ -514,6 +532,11 @@ class ActivoController {
                         ':resp'  => $cod,
                         ':padre' => $id_padre_nuevo,
                     ]);
+                    $resAcc = $stmtAcc->fetch();
+                    // Si un accesorio falla, registramos pero no abortamos todo
+                    if ($resAcc && $resAcc['id_res'] <= 0) {
+                        error_log("Accesorio no guardado: " . ($resAcc['msj'] ?? 'error desconocido'));
+                    }
                 }
             }
 

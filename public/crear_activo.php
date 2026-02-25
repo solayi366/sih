@@ -92,24 +92,34 @@ $data = ActivoController::getFormData();
                                     </div>
                                 </div>
                                 <div id="col-modelo" style="display:none;"><label class="label-ruby">Modelo</label><div class="input-group-ruby"><select class="input-ruby cursor-pointer" name="id_modelo" id="selector-modelo"><option value="">(Genérico)</option><?php foreach ($data['modelos'] as $mod): ?><option value="<?= $mod['id_modelo'] ?>" data-tipo="<?= $mod['id_tipoequi'] ?>"><?= $mod['nom_modelo'] ?></option><?php endforeach; ?></select></div></div>
-                                <div id="col-referencia"><label class="label-ruby">Referencia</label><div class="input-group-ruby"><input type="text" name="referencia" class="input-ruby" placeholder="Referencia técnica"></div></div>
-                                <div class="md:col-span-2">
-                                    <label class="label-ruby text-brand-600">Serial del Fabricante (S/N) *</label>
-                                    <div class="input-group-ruby border-brand-100">
-                                        <input type="text" name="serial" class="input-ruby font-mono uppercase text-base" placeholder="serial..." required>
-                                    </div>
+                                <!-- col-referencia y col-serial ahora son dinámicos -->
+                            </div>
+                        </div>
+
+                        <!-- ── CAMPOS DINÁMICOS POR TIPO ─────────────────────────── -->
+                        <div id="panel-campos-dinamicos" class="hidden">
+                            <!-- Spinner mientras carga -->
+                            <div id="campos-loading" class="bg-white rounded-[2.5rem] border-2 border-slate-100 p-8 flex items-center gap-4">
+                                <i class="fas fa-spinner fa-spin text-brand-600 text-xl"></i>
+                                <span class="text-xs font-bold text-slate-400">Cargando campos del tipo seleccionado...</span>
+                            </div>
+                            <!-- Grid de campos -->
+                            <div id="campos-grid" class="hidden bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm">
+                                <h3 class="label-ruby !mb-6 pb-2 border-b-2 border-slate-50" id="campos-titulo">
+                                    <i class="fas fa-sliders mr-1 text-brand-600"></i> Campos del Dispositivo
+                                </h3>
+                                <div id="campos-contenedor" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- renderizado por JS -->
                                 </div>
                             </div>
                         </div>
 
-                        <div id="grupo-redes" class="bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm" style="display:none;">
-                            <h3 class="label-ruby !text-brand-600 mb-6"><i class="fas fa-network-wired"></i> Red y Conectividad</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div id="grupo-hostname"><label class="label-ruby">Hostname</label><input type="text" id="input-hostname" name="hostname" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none"></div>
-                                <div><label class="label-ruby">IP</label><input type="text" id="input-ip" name="ip_equipo" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none" placeholder="0.0.0.0"></div>
-                                <div><label class="label-ruby">MAC</label><input type="text" id="input-mac" name="mac_activo" class="input-group-ruby px-4 py-2.5 text-xs font-bold font-mono outline-none" placeholder="00:00:00..."></div>
-                            </div>
-                        </div>
+                        <!-- Campos de red ocultos para compatibilidad con Excel import y controller -->
+                        <input type="hidden" name="hostname"    id="input-hostname">
+                        <input type="hidden" name="ip_equipo"   id="input-ip">
+                        <input type="hidden" name="mac_activo"  id="input-mac">
+                        <input type="hidden" name="referencia"  id="input-referencia">
+                        <input type="hidden" name="serial"      id="input-serial" required>
 
                         <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl">
                             <div class="flex justify-between items-center mb-6">
@@ -177,6 +187,7 @@ $data = ActivoController::getFormData();
                         </div>
 
                         <input type="hidden" name="accesorios_json_final" id="accesoriosJson">
+                        <input type="hidden" name="campos_dinamicos_json" id="campos_dinamicos_json">
                         <button type="button" onclick="prepararYEnviar()" class="w-full py-5 red-gradient text-white rounded-[2rem] font-black uppercase shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
                             <i class="fas fa-save text-xl"></i> GUARDAR TODO
                         </button>
@@ -249,27 +260,41 @@ $data = ActivoController::getFormData();
                 if(data.success) {
                     const p = data.principal;
 
-                    // 1. Llenar campos de texto simples
-                    document.getElementsByName('serial')[0].value    = p.serial      || '';
-                    document.getElementsByName('referencia')[0].value = p.referencia || '';
-                    document.getElementById('input-responsable').value = p.responsable || '';
-
-                    // 2. Seleccionar Tipo de equipo
+                    // 1. Seleccionar Tipo de equipo (esto dispara cargarCamposTipo)
                     seleccionarPorTexto('selectTipo', p.tipo);
 
-                    // 3. Forzar visibilidad del grupo-redes si hay datos de red,
-                    //    independiente de si el tipo se seleccionó o no
-                    if (p.ip || p.mac || p.hostname) {
-                        document.getElementById('grupo-redes').style.display = 'block';
-                        document.getElementById('grupo-padre').style.display = 'none';
-                    } else {
-                        toggleCampos();
+                    // 2. Esperar a que se carguen los campos dinámicos del tipo, luego llenar
+                    await new Promise(resolve => setTimeout(resolve, 600));
+
+                    // Llenar campos dinámicos por nombre de campo
+                    const mapeoExcel = {
+                        'serial':    p.serial,
+                        'referencia': p.referencia,
+                        'hostname':  p.hostname,
+                        'ip_equipo': p.ip,
+                        'mac_activo': p.mac,
+                    };
+                    for (const [nombre, valor] of Object.entries(mapeoExcel)) {
+                        if (!valor) continue;
+                        // Buscar el input dinámico por data-campo-nombre
+                        const div = document.querySelector(`#campos-contenedor [data-campo-nombre="${nombre}"]`);
+                        if (div) {
+                            const inp = div.querySelector('input,select,textarea');
+                            if (inp) { inp.value = valor; inp.dispatchEvent(new Event('input')); }
+                        }
+                        // También llenar los hidden de compatibilidad
+                        const hiddenMap = {
+                            'serial':'input-serial','hostname':'input-hostname',
+                            'ip_equipo':'input-ip','mac_activo':'input-mac','referencia':'input-referencia'
+                        };
+                        if (hiddenMap[nombre]) {
+                            const h = document.getElementById(hiddenMap[nombre]);
+                            if (h) h.value = valor;
+                        }
                     }
 
-                    // 4. Llenar IP/MAC/Hostname por name (funcionan aunque el div esté oculto)
-                    document.getElementById('input-ip').value       = p.ip       || '';
-                    document.getElementById('input-mac').value      = p.mac      || '';
-                    document.getElementById('input-hostname').value = p.hostname || '';
+                    // También llenar el responsable
+                    document.getElementById('input-responsable').value = p.responsable || '';
 
                     // 4. Marca: buscar en el select, si no existe crearla via API
                     await seleccionarOCrearMarca(p.marca);
@@ -362,6 +387,7 @@ $data = ActivoController::getFormData();
         }
 
         function prepararYEnviar() {
+            // 1. Recoger accesorios
             const accesorios = [];
             document.querySelectorAll('#tablaAccesorios tbody tr').forEach(tr => {
                 accesorios.push({
@@ -371,15 +397,195 @@ $data = ActivoController::getFormData();
                 });
             });
             document.getElementById('accesoriosJson').value = JSON.stringify(accesorios);
+
+            // 2. Sincronizar campos base dinámicos → hidden del controller
+            const mapeo = {
+                'serial':    'input-serial',
+                'hostname':  'input-hostname',
+                'ip_equipo': 'input-ip',
+                'mac_activo':'input-mac',
+                'referencia':'input-referencia',
+            };
+            document.querySelectorAll('#campos-contenedor [data-campo-nombre]').forEach(div => {
+                const nombre = div.dataset.campoNombre;
+                const hiddenId = mapeo[nombre];
+                if (hiddenId) {
+                    const input = div.querySelector('input,select,textarea');
+                    const hidden = document.getElementById(hiddenId);
+                    if (input && hidden) hidden.value = input.value;
+                }
+            });
+
+            // 3. Recoger valores de campos dinámicos extra (no base) como JSON
+            const valoresDin = {};
+            document.querySelectorAll('[name^="campo_din_"]').forEach(inp => {
+                const id = inp.name.replace('campo_din_', '');
+                if (inp.type === 'checkbox') {
+                    if (inp.checked) valoresDin[id] = '1';
+                } else if (inp.value !== '') {
+                    valoresDin[id] = inp.value;
+                }
+            });
+            document.getElementById('campos_dinamicos_json').value = JSON.stringify(valoresDin);
+
+            // 4. Validar serial (obligatorio siempre)
+            const serial = document.getElementById('input-serial').value.trim();
+            if (!serial) {
+                // Intentar encontrar el campo serial en el formulario dinámico
+                const serialDin = document.querySelector('#campos-contenedor [data-campo-nombre="serial"] input');
+                if (serialDin && serialDin.value.trim()) {
+                    document.getElementById('input-serial').value = serialDin.value.trim();
+                } else {
+                    alert('El campo Serial es obligatorio.');
+                    return;
+                }
+            }
+
             document.getElementById('formCrear').submit();
+        }
+
+        // ── CAMPOS DINÁMICOS ──────────────────────────────────────────────────────
+        // Genera el input correcto según tipo_dato del campo
+        function renderInput(campo, valorActual = '') {
+            const id  = `campo_din_${campo.id_campo}`;
+            const req = campo.requerido ? 'required' : '';
+            const cls = 'input-ruby';
+
+            switch (campo.tipo_dato) {
+                case 'numero':
+                    return `<input type="number" id="${id}" name="campo_din_${campo.id_campo}"
+                                class="${cls}" value="${valorActual}" ${req} step="any" placeholder="0">`;
+
+                case 'booleano':
+                    const chk = valorActual === '1' || valorActual === 'true' || valorActual === 'SI';
+                    return `<div class="flex items-center gap-3 py-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="campo_din_${campo.id_campo}" value="0">
+                            <input type="checkbox" id="${id}" name="campo_din_${campo.id_campo}"
+                                   value="1" class="sr-only peer" ${chk ? 'checked' : ''} ${req}>
+                            <div class="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:bg-brand-600
+                                        after:content-[''] after:absolute after:top-0.5 after:left-[2px]
+                                        after:bg-white after:rounded-full after:h-5 after:w-5
+                                        after:transition-all peer-checked:after:translate-x-6"></div>
+                        </label>
+                        <span class="text-xs font-bold text-slate-500">Sí / No</span>
+                    </div>`;
+
+                case 'fecha':
+                    return `<input type="date" id="${id}" name="campo_din_${campo.id_campo}"
+                                class="${cls}" value="${valorActual}" ${req}>`;
+
+                case 'lista':
+                    try {
+                        const opts = JSON.parse(campo.opciones || '[]');
+                        const optsHtml = opts.map(o =>
+                            `<option value="${o}" ${valorActual === o ? 'selected' : ''}>${o}</option>`
+                        ).join('');
+                        return `<select id="${id}" name="campo_din_${campo.id_campo}" class="${cls} cursor-pointer" ${req}>
+                                    <option value="">Seleccione...</option>${optsHtml}
+                                </select>`;
+                    } catch(e) {
+                        return `<input type="text" id="${id}" name="campo_din_${campo.id_campo}" class="${cls}" value="${valorActual}" ${req}>`;
+                    }
+
+                default: // texto + campos base especiales
+                    let placeholder = '';
+                    let extra = '';
+                    if (campo.nombre === 'serial')     { placeholder = 'Número de serie...'; extra = 'font-mono uppercase'; }
+                    if (campo.nombre === 'hostname')    { placeholder = 'PC-USUARIO-01'; extra = 'font-mono'; }
+                    if (campo.nombre === 'ip_equipo')   { placeholder = '192.168.1.100'; extra = 'font-mono'; }
+                    if (campo.nombre === 'mac_activo')  { placeholder = '00:1A:2B:3C:4D:5E'; extra = 'font-mono'; }
+                    return `<input type="text" id="${id}" name="campo_din_${campo.id_campo}"
+                                class="${cls} ${extra}" value="${valorActual}" ${req} placeholder="${placeholder}">`;
+            }
+        }
+
+        // Carga los campos del tipo seleccionado y renderiza el formulario
+        async function cargarCamposTipo(idTipo) {
+            if (!idTipo) {
+                document.getElementById('panel-campos-dinamicos').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('panel-campos-dinamicos').classList.remove('hidden');
+            document.getElementById('campos-loading').classList.remove('hidden');
+            document.getElementById('campos-grid').classList.add('hidden');
+
+            try {
+                const res  = await fetch(`../controllers/parametrosController.php?action=getCamposFormulario&id_tipo=${idTipo}`);
+                const data = await res.json();
+
+                const contenedor = document.getElementById('campos-contenedor');
+                contenedor.innerHTML = '';
+
+                if (!data.campos || data.campos.length === 0) {
+                    contenedor.innerHTML = `
+                        <div class="md:col-span-2 text-center py-6 text-slate-300">
+                            <i class="fas fa-puzzle-piece text-3xl mb-2"></i>
+                            <p class="text-xs font-bold">Este tipo no tiene campos configurados.<br>
+                            Ve a <a href="parametros_tipos.php" class="text-brand-600 underline">Tipos de Equipo</a> para configurarlos.</p>
+                        </div>`;
+                } else {
+                    data.campos.forEach(campo => {
+                        const isFullWidth = ['descripcion','notas','observaciones'].includes(campo.nombre);
+                        const div = document.createElement('div');
+                        div.className = isFullWidth ? 'md:col-span-2' : '';
+                        div.dataset.campoNombre = campo.nombre;
+                        div.innerHTML = `
+                            <label class="label-ruby">
+                                <i class="fas ${campo.icono} mr-1 text-brand-600"></i>
+                                ${campo.etiqueta}
+                                ${campo.requerido ? '<span class="text-brand-600">*</span>' : ''}
+                            </label>
+                            <div class="input-group-ruby">
+                                ${renderInput(campo)}
+                            </div>`;
+                        contenedor.appendChild(div);
+
+                        // Sincronizar campos base con los hidden del controller
+                        const input = div.querySelector(`[name="campo_din_${campo.id_campo}"]`);
+                        if (input) {
+                            const mapeoHidden = {
+                                'serial':    'input-serial',
+                                'hostname':  'input-hostname',
+                                'ip_equipo': 'input-ip',
+                                'mac_activo':'input-mac',
+                                'referencia':'input-referencia',
+                            };
+                            if (mapeoHidden[campo.nombre]) {
+                                input.addEventListener('input', () => {
+                                    const hidden = document.getElementById(mapeoHidden[campo.nombre]);
+                                    if (hidden) hidden.value = input.value;
+                                });
+                            }
+                        }
+                    });
+                }
+
+                document.getElementById('campos-loading').classList.add('hidden');
+                document.getElementById('campos-grid').classList.remove('hidden');
+
+            } catch(e) {
+                console.error('Error cargando campos:', e);
+                document.getElementById('campos-loading').innerHTML =
+                    '<p class="text-red-500 text-xs font-bold"><i class="fas fa-exclamation-circle mr-1"></i>Error al cargar campos</p>';
+            }
         }
 
         function toggleCampos() {
             var select = document.getElementById("selectTipo");
-            var nombreTipo = (select.options[select.selectedIndex]?.getAttribute("data-nombre") || "").toUpperCase();
-            var esPC = ["TABLET", "COMPUTADOR", "PORTATIL", "PC", "SERVIDOR", "AIO"].some(t => nombreTipo.includes(t));
-            document.getElementById("grupo-redes").style.display = esPC ? "block" : "none";
+            var idTipo = select.value;
+
+            // Mostrar/ocultar modelo
+            const nombreTipo = (select.options[select.selectedIndex]?.getAttribute("data-nombre") || "").toUpperCase();
+            const esPC = ["TABLET","COMPUTADOR","PORTATIL","PC","SERVIDOR","AIO"].some(t => nombreTipo.includes(t));
+            document.getElementById("col-modelo").style.display = esPC ? "block" : "none";
+
+            // Mostrar equipo padre si no es tipo principal
             document.getElementById("grupo-padre").style.display = esPC ? "none" : "block";
+
+            // Cargar campos dinámicos
+            if (idTipo) cargarCamposTipo(idTipo);
         }
 
         async function buscarEmpleado() {

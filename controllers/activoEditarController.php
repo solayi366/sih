@@ -29,6 +29,24 @@ class ActivoEditarController {
                 exit();
             }
 
+            // ── Campos dinámicos actuales del activo ─────────────────────────
+            $campos_dinamicos = [];
+            try {
+                $stmtD = $db->prepare("
+                    SELECT c.id_campo, c.nombre, c.etiqueta, c.tipo_dato, c.icono, c.opciones, c.is_base,
+                           v.valor
+                    FROM tab_campos c
+                    INNER JOIN tab_tipo_campos tc ON tc.id_campo = c.id_campo
+                        AND tc.id_tipoequi = (SELECT id_tipoequi FROM tab_activotec WHERE id_activo = :id)
+                        AND tc.activo = TRUE
+                    LEFT JOIN tab_activo_campos_valores v ON v.id_campo = c.id_campo AND v.id_activo = :id2
+                    WHERE c.activo = TRUE AND c.is_base = FALSE
+                    ORDER BY COALESCE(tc.orden, c.orden), c.id_campo
+                ");
+                $stmtD->execute([':id' => $id, ':id2' => $id]);
+                $campos_dinamicos = $stmtD->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) { /* tabla no existe aún */ }
+
             // ── Listas para los selectores ────────────────────────────────────
             return [
                 'activo'  => $activo,
@@ -36,6 +54,7 @@ class ActivoEditarController {
                 'marcas'  => $db->query("SELECT id_marca, nom_marca FROM tab_marca ORDER BY nom_marca")->fetchAll(),
                 'modelos' => $db->query("SELECT id_modelo, nom_modelo, id_tipoequi FROM tab_modelo")->fetchAll(),
                 'areas'   => $db->query("SELECT id_area, nom_area FROM tab_area ORDER BY nom_area")->fetchAll(),
+                'campos_dinamicos' => $campos_dinamicos,
                 'padres'  => $db->query(
                     "SELECT id_activo, serial, referencia FROM tab_activotec
                      WHERE id_padre_activo IS NULL AND activo = TRUE
@@ -79,10 +98,13 @@ class ActivoEditarController {
 
             $id_padre = !empty($postData['id_padre_activo']) ? (int)$postData['id_padre_activo'] : null;
 
+            // Contraseña: solo guardar si viene (no piso con null si está vacío)
+            $password_nuevo = !empty($postData['password_activo']) ? $postData['password_activo'] : null;
+
             $stmtUpd = $db->prepare(
                 "SELECT * FROM fun_update_activo(
                     :id, :ser, :qr, :host, :ref, :mac, :ip,
-                    :tipo, :marca, :mod, :est, :resp, :padre
+                    :tipo, :marca, :mod, :est, :resp, :padre, :pwd
                 )"
             );
             $stmtUpd->execute([
@@ -99,6 +121,7 @@ class ActivoEditarController {
                 ':est'   => $postData['estado']      ?? 'Bueno',
                 ':resp'  => $cod,
                 ':padre' => $id_padre,
+                ':pwd'   => $password_nuevo,
             ]);
 
             $res = $stmtUpd->fetch();
@@ -107,6 +130,15 @@ class ActivoEditarController {
                 $db->rollBack();
                 header("Location: ../public/editar.php?id={$id}&msg=" . urlencode($res['msj']) . "&tipo=danger");
                 exit();
+            }
+
+            // ── Guardar campos dinámicos ─────────────────────────────────────
+            if (!empty($postData['campos_dinamicos_json'])) {
+                $valoresDin = json_decode($postData['campos_dinamicos_json'], true);
+                if (is_array($valoresDin) && count($valoresDin) > 0) {
+                    $stmtDin = $db->prepare("SELECT * FROM fun_save_valores_activo(:id, :vals::jsonb)");
+                    $stmtDin->execute([':id' => $id, ':vals' => json_encode($valoresDin)]);
+                }
             }
 
             $db->commit();

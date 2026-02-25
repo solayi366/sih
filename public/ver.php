@@ -1,8 +1,24 @@
 <?php
 require_once '../controllers/activoVerController.php';
-$res    = ActivoVerController::ver();
-$activo = $res['activo'];
-$hijos  = $res['hijos'];
+if (session_status() === PHP_SESSION_NONE) session_start();
+$res              = ActivoVerController::ver();
+$activo           = $res['activo'];
+$hijos            = $res['hijos'];
+$campos_dinamicos = $res['campos_dinamicos'] ?? [];
+
+// es_admin: siempre consultar BD en vivo para evitar valor obsoleto en sesión.
+// El bug original usaba isset() que "atrapaba" el false guardado en el login
+// cuando fun_read_usuario aún no devolvía r_admin.
+try {
+    $db_adm   = Database::conectar();
+    $stmt_adm = $db_adm->prepare("SELECT es_admin FROM tab_usuarios WHERE id_usuario = :id AND activo = TRUE");
+    $stmt_adm->execute([':id' => $_SESSION['user_id'] ?? 0]);
+    $row_adm  = $stmt_adm->fetch(PDO::FETCH_ASSOC);
+    $es_admin = (bool)($row_adm['es_admin'] ?? false);
+    $_SESSION['es_admin'] = $es_admin;
+} catch (Exception $e) {
+    $es_admin = isset($_SESSION['es_admin']) ? (bool)$_SESSION['es_admin'] : false;
+}
 
 // ─── Soportar acceso por código QR escaneado ─────────────────────────────────
 // Si alguien escanea el QR físico, llegará con ?qr=QR-XXXXXX en lugar de ?id=N
@@ -100,6 +116,14 @@ $hijos  = $res['hijos'];
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-2xl transition-all shadow-sm font-bold text-sm"
                            title="Editar activo">
                             <i class="fas fa-pen-nib text-brand-500"></i>
+                        </a>
+                        <?php endif; ?>
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                        <a href="exportar.php?modo=individual&id=<?= $activo['r_id'] ?>"
+                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-lg font-bold text-sm"
+                           title="Exportar ficha completa a Excel (incluye periféricos y novedades)">
+                            <i class="fas fa-file-excel"></i>
+                            <span class="hidden sm:inline">Exportar Excel</span>
                         </a>
                         <?php endif; ?>
                         <button onclick="window.print()"
@@ -340,6 +364,86 @@ $hijos  = $res['hijos'];
                                 </p>
                             </div>
                             <?php endif; ?>
+
+
+                            <!-- ── Contraseña (solo admin) ── -->
+                            <?php if ($es_admin): ?>
+                            <div class="mt-6 pt-6 border-t-2 border-slate-100">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                    <i class="fas fa-lock text-amber-400"></i> Contraseña del Equipo
+                                    <span class="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-black">Solo admin</span>
+                                </span>
+                                <?php if (!empty($activo['r_password'])): ?>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <p class="font-mono font-bold text-slate-700 text-sm" id="pwd-display">••••••••</p>
+                                    <button type="button" onclick="togglePwdVer()"
+                                            class="text-[10px] text-brand-600 font-black hover:underline flex items-center gap-1">
+                                        <i class="fas fa-eye text-xs" id="pwd-eye-icon"></i>
+                                        <span id="pwd-eye-label">Mostrar</span>
+                                    </button>
+                                </div>
+                                <div id="pwd-actual" class="hidden font-mono font-bold text-slate-800 text-base mt-1 select-all">
+                                    <?= htmlspecialchars($activo['r_password']) ?>
+                                </div>
+                                <?php else: ?>
+                                <p class="mt-2 text-sm text-slate-400 italic">Sin contraseña registrada —
+                                    <a href="editar.php?id=<?= $activo['r_id'] ?>" class="text-brand-600 font-bold hover:underline">Agregar desde editar</a>
+                                </p>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+
+                            <!-- ── Campos Dinámicos (colapsable) ── -->
+                            <?php if (!empty($campos_dinamicos)): ?>
+                            <div class="mt-8 pt-8 border-t-2 border-slate-100">
+                                <!-- Trigger del dropdown -->
+                                <button type="button" onclick="toggleCamposExtra()"
+                                        class="w-full flex items-center justify-between gap-3 group">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-1 bg-brand-600 rounded-full"></div>
+                                        <h4 class="text-sm font-black text-slate-700 uppercase tracking-widest">
+                                            Campos Adicionales
+                                        </h4>
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-brand-50 text-brand-600">
+                                            <?= count($campos_dinamicos) ?>
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-brand-600 transition-colors">
+                                        <span class="text-[10px] font-bold" id="campos-extra-label">Ver todo</span>
+                                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" id="campos-extra-icon"></i>
+                                    </div>
+                                </button>
+
+                                <!-- Panel colapsable -->
+                                <div id="panel-campos-extra"
+                                     class="overflow-hidden transition-all duration-300 max-h-0 opacity-0">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-5">
+                                        <?php foreach ($campos_dinamicos as $cd): ?>
+                                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3">
+                                            <div class="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <i class="fas <?= htmlspecialchars($cd['icono'] ?? 'fa-tag') ?> text-brand-500 text-xs"></i>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <span class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                                                    <?= htmlspecialchars($cd['etiqueta']) ?>
+                                                </span>
+                                                <span class="block font-bold text-slate-800 text-sm">
+                                                    <?php
+                                                    $valor = $cd['valor'];
+                                                    if ($cd['tipo_dato'] === 'booleano') {
+                                                        echo ($valor === '1' || strtolower((string)$valor) === 'true') ? '✅ Sí' : '❌ No';
+                                                    } else {
+                                                        echo htmlspecialchars($valor ?? '—');
+                                                    }
+                                                    ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Periféricos vinculados (solo activos principales) -->
@@ -528,6 +632,41 @@ $hijos  = $res['hijos'];
 
     <script src="../assets/js/sidebar_logic.js"></script>
     <script>
+
+        // ── Toggle campos adicionales ────────────────────────────────────────
+        let camposAbiertos = false;
+        function toggleCamposExtra() {
+            const panel  = document.getElementById('panel-campos-extra');
+            const icon   = document.getElementById('campos-extra-icon');
+            const label  = document.getElementById('campos-extra-label');
+            camposAbiertos = !camposAbiertos;
+            if (camposAbiertos) {
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+                panel.style.opacity   = '1';
+                icon.style.transform  = 'rotate(180deg)';
+                label.textContent     = 'Ocultar';
+            } else {
+                panel.style.maxHeight = '0';
+                panel.style.opacity   = '0';
+                icon.style.transform  = 'rotate(0deg)';
+                label.textContent     = 'Ver todo';
+            }
+        }
+
+        // ── Mostrar/ocultar contraseña (admin) ───────────────────────────────
+        function togglePwdVer() {
+            const dots  = document.getElementById('pwd-display');
+            const real  = document.getElementById('pwd-actual');
+            const icon  = document.getElementById('pwd-eye-icon');
+            const lbl   = document.getElementById('pwd-eye-label');
+            if (!dots || !real) return;
+            const show  = real.classList.contains('hidden');
+            real.classList.toggle('hidden', !show);
+            dots.classList.toggle('hidden', show);
+            icon.className = show ? 'fas fa-eye-slash text-xs' : 'fas fa-eye text-xs';
+            lbl.textContent = show ? 'Ocultar' : 'Mostrar';
+        }
+
         // ── Toast de URL params ──────────────────────────────────────────────
         window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);

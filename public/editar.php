@@ -1,8 +1,27 @@
 <?php
 require_once '../controllers/activoEditarController.php';
-$id   = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$data = ActivoEditarController::getFormData($id);
-$a    = $data['activo']; // alias corto para la vista
+if (session_status() === PHP_SESSION_NONE) session_start();
+$id               = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$data             = ActivoEditarController::getFormData($id);
+$a                = $data['activo'];
+$campos_dinamicos = $data['campos_dinamicos'] ?? [];
+
+// es_admin: siempre se consulta en vivo desde la BD para evitar valores obsoletos en sesión.
+// FIX: antes solo se usaba $_SESSION['es_admin'] que el login guardaba como false porque
+// fun_read_usuario no devolvía el campo r_admin. Ahora la función SQL está corregida,
+// pero además forzamos la consulta directa para máxima fiabilidad.
+try {
+    require_once '../core/database.php';
+    $db_adm   = Database::conectar();
+    $stmt_adm = $db_adm->prepare("SELECT es_admin FROM tab_usuarios WHERE id_usuario = :id AND activo = TRUE");
+    $stmt_adm->execute([':id' => $_SESSION['user_id'] ?? 0]);
+    $row_adm  = $stmt_adm->fetch(PDO::FETCH_ASSOC);
+    $es_admin = (bool)($row_adm['es_admin'] ?? false);
+    $_SESSION['es_admin'] = $es_admin; // actualizar sesión con valor real
+} catch (Exception $e) {
+    // Si falla la BD, caer al valor de sesión como respaldo
+    $es_admin = isset($_SESSION['es_admin']) ? (bool)$_SESSION['es_admin'] : false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -189,6 +208,71 @@ $a    = $data['activo']; // alias corto para la vista
                             </div>
                         </div>
 
+
+                        <!-- ── Campos Dinámicos ─────────────────────────────── -->
+                        <?php if (!empty($campos_dinamicos)): ?>
+                        <div class="bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm">
+                            <h3 class="label-ruby !text-brand-600 mb-6 flex items-center gap-2">
+                                <i class="fas fa-puzzle-piece"></i> Campos Personalizados
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="campos-dinamicos-container">
+                            <?php foreach ($campos_dinamicos as $cd):
+                                $val = htmlspecialchars($cd['valor'] ?? '');
+                                $id_campo = (int)$cd['id_campo'];
+                                $tipo = $cd['tipo_dato'];
+                                $opciones = !empty($cd['opciones']) ? json_decode($cd['opciones'], true) : [];
+                            ?>
+                            <div>
+                                <label class="label-ruby flex items-center gap-1.5">
+                                    <i class="fas <?= htmlspecialchars($cd['icono'] ?? 'fa-tag') ?> text-brand-400"></i>
+                                    <?= htmlspecialchars($cd['etiqueta']) ?>
+                                </label>
+                                <?php if ($tipo === 'booleano'): ?>
+                                <div class="input-group-ruby">
+                                    <select class="input-ruby campo-dinamico-input" data-campo-id="<?= $id_campo ?>">
+                                        <option value="1" <?= ($cd['valor'] === '1' || $cd['valor'] === 'true') ? 'selected' : '' ?>>Sí</option>
+                                        <option value="0" <?= ($cd['valor'] === '0' || $cd['valor'] === 'false' || $cd['valor'] === null || $cd['valor'] === '') ? 'selected' : '' ?>>No</option>
+                                    </select>
+                                </div>
+                                <?php elseif ($tipo === 'lista' && !empty($opciones)): ?>
+                                <div class="input-group-ruby">
+                                    <select class="input-ruby campo-dinamico-input" data-campo-id="<?= $id_campo ?>">
+                                        <option value="">Seleccione...</option>
+                                        <?php foreach ($opciones as $op): ?>
+                                        <option value="<?= htmlspecialchars($op) ?>" <?= ($cd['valor'] === $op) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($op) ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <?php elseif ($tipo === 'fecha'): ?>
+                                <div class="input-group-ruby">
+                                    <input type="date" class="input-ruby campo-dinamico-input"
+                                           data-campo-id="<?= $id_campo ?>"
+                                           value="<?= $val ?>">
+                                </div>
+                                <?php elseif ($tipo === 'numero'): ?>
+                                <div class="input-group-ruby">
+                                    <input type="number" class="input-ruby campo-dinamico-input"
+                                           data-campo-id="<?= $id_campo ?>"
+                                           placeholder="0"
+                                           value="<?= $val ?>">
+                                </div>
+                                <?php else: ?>
+                                <div class="input-group-ruby">
+                                    <input type="text" class="input-ruby campo-dinamico-input"
+                                           data-campo-id="<?= $id_campo ?>"
+                                           placeholder="<?= htmlspecialchars($cd['etiqueta']) ?>"
+                                           value="<?= $val ?>">
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                            </div>
+                            <input type="hidden" name="campos_dinamicos_json" id="campos_dinamicos_json">
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Información de solo lectura -->
                         <div class="bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 p-6">
                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
@@ -287,6 +371,49 @@ $a    = $data['activo']; // alias corto para la vista
                             </div>
                         </div>
 
+
+                        <!-- ── Contraseña del activo ──────────────────────── -->
+                        <div class="bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm">
+                            <label class="label-ruby flex items-center gap-2">
+                                <i class="fas fa-lock text-slate-400"></i>
+                                Contraseña / Clave del Equipo
+                                <?php if (!$es_admin): ?>
+                                <span class="pill-tipo bg-amber-50 text-amber-600 text-[9px] px-2 py-0.5 rounded-full font-black">Solo escritura</span>
+                                <?php endif; ?>
+                            </label>
+                            <?php if ($es_admin): ?>
+                            <!-- Admin ve el valor actual -->
+                            <div class="input-group-ruby mt-2">
+                                <div class="input-icon-box">
+                                    <i class="fas fa-eye-slash text-slate-400 cursor-pointer" id="togglePwdIcon"
+                                       onclick="togglePassword()"></i>
+                                </div>
+                                <input type="password" name="password_activo" id="input-password"
+                                       class="input-ruby font-mono"
+                                       placeholder="Contraseña actual o nueva..."
+                                       value="<?= htmlspecialchars($a['r_password'] ?? '') ?>">
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1.5">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Visible solo para administradores. Déjalo vacío para no cambiarla.
+                            </p>
+                            <?php else: ?>
+                            <!-- Usuario normal solo puede escribir una nueva -->
+                            <div class="input-group-ruby mt-2">
+                                <div class="input-icon-box">
+                                    <i class="fas fa-lock text-slate-300"></i>
+                                </div>
+                                <input type="password" name="password_activo" id="input-password"
+                                       class="input-ruby font-mono"
+                                       placeholder="Escribe una nueva contraseña...">
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1.5">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Déjalo vacío para no cambiarla. No puedes ver la contraseña actual.
+                            </p>
+                            <?php endif; ?>
+                        </div>
+
                         <!-- Botón guardar -->
                         <button type="button" onclick="confirmarGuardar()"
                                 class="w-full py-5 red-gradient text-white rounded-[2rem] font-black uppercase shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
@@ -352,8 +479,33 @@ $a    = $data['activo']; // alias corto para la vista
             }
         }
 
+
+        // ── Recolectar campos dinámicos antes de guardar ─────────────────────
+        function recolectarCamposDinamicos() {
+            const inputs = document.querySelectorAll('.campo-dinamico-input');
+            if (!inputs.length) return;
+            const valores = {};
+            inputs.forEach(inp => {
+                const id = inp.dataset.campoId;
+                if (id && inp.value !== '') valores[id] = inp.value;
+            });
+            const hidden = document.getElementById('campos_dinamicos_json');
+            if (hidden) hidden.value = JSON.stringify(valores);
+        }
+
+        // ── Mostrar/ocultar contraseña ───────────────────────────────────────
+        function togglePassword() {
+            const inp  = document.getElementById('input-password');
+            const icon = document.getElementById('togglePwdIcon');
+            if (!inp) return;
+            const show = inp.type === 'password';
+            inp.type   = show ? 'text' : 'password';
+            icon.className = show ? 'fas fa-eye text-brand-500 cursor-pointer' : 'fas fa-eye-slash text-slate-400 cursor-pointer';
+        }
+
         // ── Confirmar antes de guardar ────────────────────────────────────────
         function confirmarGuardar() {
+            recolectarCamposDinamicos();
             document.getElementById('formEditar').submit();
         }
 

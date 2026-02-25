@@ -73,7 +73,20 @@ class ActivoVerController {
                 $hijos = $stmtH->fetchAll(PDO::FETCH_ASSOC);
             }
 
-            return ['activo' => $activo, 'hijos' => $hijos];
+            // ── Campos dinámicos del activo ──────────────────────────────────
+            $campos_dinamicos = [];
+            try {
+                $stmtD = $db->prepare("SELECT * FROM fun_get_valores_activo(:id)");
+                $stmtD->bindParam(':id', $id, PDO::PARAM_INT);
+                $stmtD->execute();
+                $raw = $stmtD->fetchAll(PDO::FETCH_ASSOC);
+                // Solo campos personalizados (no los base: serial, IP, MAC, etc.)
+                $campos_dinamicos = array_filter($raw, fn($c) => !($c['is_base'] ?? false));
+            } catch (Exception $e) {
+                // Si la función no existe aún, seguir sin error
+            }
+
+            return ['activo' => $activo, 'hijos' => $hijos, 'campos_dinamicos' => $campos_dinamicos];
 
         } catch (Exception $e) {
             error_log("ActivoVerController: " . $e->getMessage());
