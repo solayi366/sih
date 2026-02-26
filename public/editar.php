@@ -29,6 +29,15 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Activo #<?= $a['r_id'] ?> | SIH_QR</title>
+        <!-- Dark mode: aplicar clase antes del render para evitar flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -37,6 +46,7 @@ try {
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -63,13 +73,14 @@ try {
         .input-ruby { flex: 1; padding: 0.625rem 1rem; font-size: 0.875rem; font-weight: 700; outline: none; background: transparent; }
         .label-ruby { font-size: 0.6875rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 
 <body class="text-slate-800 antialiased font-sans h-screen flex overflow-hidden">
 
     <?php include '../includes/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50/50 w-full">
+    <main class="flex-1 flex flex-col pt-14 md:pt-0 h-full overflow-hidden relative bg-slate-50/50 w-full">
         <div class="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth w-full">
 
             <form action="../controllers/activoEditarController.php"
@@ -532,5 +543,6 @@ try {
             toggleCampos();
         });
     </script>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

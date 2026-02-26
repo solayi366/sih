@@ -53,12 +53,22 @@ function qStr(array $over = []): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventario | SIH_QR</title>
+        <!-- Dark mode: aplicar clase antes del render para evitar flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/custom_sidebar.css">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: { brand: { 50:'#fff1f2', 100:'#ffe4e6', 600:'#e11d48', 700:'#be123c' } },
@@ -75,13 +85,49 @@ function qStr(array $over = []): string {
         .fbtn.activo { box-shadow: 0 0 0 2px currentColor; }
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* ── Dark mode: activos.php específico ── */
+        /* Contenedor principal barra filtros + tabla */
+        .dark .bg-white.rounded-2xl,
+        .dark .bg-white.rounded-3xl { background-color: #1e293b !important; border-color: #334155 !important; }
+        /* Thead */
+        .dark .bg-slate-50\/80,
+        .dark .bg-slate-50\/50 { background-color: #273549 !important; }
+        /* Filas hover */
+        .dark .hover\:bg-slate-50:hover { background-color: #273549 !important; }
+        /* Panel periféricos desplegable */
+        .dark .bg-slate-50\/80.border-t { background-color: #1a2535 !important; border-color: #334155 !important; }
+        /* Card periférico individual */
+        .dark .bg-white.rounded-xl { background-color: #273549 !important; border-color: #334155 !important; }
+        /* Icono tipo equipo en tabla */
+        .dark .bg-slate-100.rounded-xl { background-color: #273549 !important; }
+        /* Badge marca */
+        .dark .bg-slate-100.text-slate-600 { background-color: #273549 !important; color: #94a3b8 !important; }
+        /* Badge periféricos count */
+        .dark .bg-slate-100.text-slate-700 { background-color: #273549 !important; color: #94a3b8 !important; }
+        /* Botones acción (ver/editar) */
+        .dark .hover\:bg-slate-100 { --tw-bg-opacity: 1; }
+        .dark .hover\:bg-slate-100:hover { background-color: #273549 !important; }
+        /* Input buscador */
+        .dark .bg-slate-50.border.border-slate-200 { background-color: #273549 !important; border-color: #334155 !important; color: #f1f5f9 !important; }
+        .dark .focus\:bg-white:focus { background-color: #1e293b !important; }
+        /* Paginación */
+        .dark .bg-slate-100.text-slate-700 { background-color: #273549 !important; color: #94a3b8 !important; }
+        /* Modal QR interno */
+        .dark .bg-white.rounded-3xl { background-color: #1e293b !important; }
+        .dark .bg-slate-100.hover\:bg-slate-200 { background-color: #273549 !important; }
+        .dark .h-px.bg-slate-100 { background-color: #334155 !important; }
+        /* Divider border-b */
+        .dark .border-b.border-slate-100 { border-color: #334155 !important; }
+        .dark .divide-y.divide-slate-100 > * + * { border-color: #334155 !important; }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden">
 
     <?php include '../includes/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50/50 w-full min-w-0">
+    <main class="flex-1 flex flex-col pt-14 md:pt-0 h-full overflow-hidden relative bg-slate-50/50 w-full min-w-0">
         <div class="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 w-full">
             <div class="max-w-[1700px] mx-auto">
 
@@ -578,5 +624,6 @@ HTML;
     });
     </script>
 
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

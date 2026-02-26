@@ -1,5 +1,5 @@
 <?php
-require_once 'core/Database.php';
+require_once 'core/database.php';
 
 $user = 'admin_sih';
 $pass = 'Colombia2026*';

@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../core/Database.php';
+require_once '../core/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');

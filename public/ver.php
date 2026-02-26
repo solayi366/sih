@@ -6,9 +6,6 @@ $activo           = $res['activo'];
 $hijos            = $res['hijos'];
 $campos_dinamicos = $res['campos_dinamicos'] ?? [];
 
-// es_admin: siempre consultar BD en vivo para evitar valor obsoleto en sesión.
-// El bug original usaba isset() que "atrapaba" el false guardado en el login
-// cuando fun_read_usuario aún no devolvía r_admin.
 try {
     $db_adm   = Database::conectar();
     $stmt_adm = $db_adm->prepare("SELECT es_admin FROM tab_usuarios WHERE id_usuario = :id AND activo = TRUE");
@@ -21,8 +18,6 @@ try {
 }
 
 // ─── Soportar acceso por código QR escaneado ─────────────────────────────────
-// Si alguien escanea el QR físico, llegará con ?qr=QR-XXXXXX en lugar de ?id=N
-// El controlador ya maneja esto, pero aseguramos el fallback aquí.
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -30,12 +25,22 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ficha Técnica #<?= $activo['r_id'] ?> | SIH_QR</title>
+        <!-- Dark mode: aplicar clase antes del render para evitar flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/custom_sidebar.css">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: { brand: { 50:'#fff1f2', 100:'#ffe4e6', 600:'#e11d48', 700:'#be123c' } },
@@ -53,6 +58,57 @@ try {
         .red-gradient {
             background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
         }
+
+        /* Body gradient solo en modo claro */
+        #verBody { background: radial-gradient(circle at top left, #fff1f2, #f8fafc); }
+        .dark #verBody { background: #0f172a !important; }
+        /* ── Dark mode: ver.php específico ── */
+        .dark body { background: #0f172a !important; }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.97) !important;
+            border-color: rgba(225, 29, 72, 0.25) !important;
+        }
+        /* Cards internas de datos (hostname, IP, MAC, serial) */
+        .dark .p-4.bg-slate-50,
+        .dark .p-6.bg-slate-50 {
+            background-color: #273549 !important;
+            border-color: #334155 !important;
+        }
+        .dark .p-4.bg-white,
+        .dark .p-8.bg-white {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        /* Contenedor tabla novedades */
+        .dark .rounded-\[2\.5rem\].bg-white,
+        .dark .shadow-xl.bg-white {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        /* Thead de tabla */
+        .dark thead.bg-slate-50 { background-color: #273549 !important; }
+        .dark .border-b-2.border-slate-100 { border-color: #334155 !important; }
+        /* Botones header (atrás, editar, imprimir) */
+        .dark button.bg-white,
+        .dark a.bg-white {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            color: #cbd5e1 !important;
+        }
+        .dark button.bg-white:hover,
+        .dark a.bg-white:hover {
+            background-color: #273549 !important;
+        }
+        /* Icono tipo equipo */
+        .dark .inline-block.bg-white { background-color: #273549 !important; border-color: #334155 !important; }
+        /* Shimmer dark */
+        .dark .qr-shimmer {
+            background: linear-gradient(90deg, #1e293b 25%, #273549 50%, #1e293b 75%);
+            background-size: 200% 100%;
+        }
+        /* Botones acción table */
+        .dark .bg-slate-100 { background-color: #273549 !important; }
+        .dark .hover\:bg-slate-200:hover { background-color: #334155 !important; }
 
         /* ── Estilos exclusivos para impresión de etiqueta QR ── */
         @media print {
@@ -79,13 +135,14 @@ try {
             100% { background-position:  200% 0; }
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden"
-      style="background: radial-gradient(circle at top left, #fff1f2, #f8fafc);">
+      id="verBody">
 
     <?php if (isset($_SESSION['user_id'])) include '../includes/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full min-w-0">
+    <main class="flex-1 flex flex-col pt-14 md:pt-0 h-full overflow-hidden relative w-full min-w-0">
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 w-full">
             <div class="max-w-6xl mx-auto">
 
@@ -141,7 +198,7 @@ try {
                     <div class="lg:col-span-4 space-y-6">
 
                         <!-- ╔══════════════════════════════════╗ -->
-                        <!-- ║      TARJETA QR (NUEVA)          ║ -->
+                        <!-- ║      TARJETA QR                  ║ -->
                         <!-- ╚══════════════════════════════════╝ -->
                         <div class="glass-card rounded-[2.5rem] p-8 shadow-2xl shadow-brand-900/5 text-center relative overflow-hidden group border-2 border-brand-100">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 opacity-50"></div>
@@ -364,19 +421,6 @@ try {
                                 </p>
                             </div>
                             <?php endif; ?>
-
-
-                            <!-- ── Contraseña (solo admin) ── -->
-                            <?php if (isset($_SESSION['es_admin']) && $_SESSION['es_admin']): ?>
-                            <div>
-                                <p class="text-[9px] font-black text-brand-600 uppercase flex items-center gap-1"><i class="fas fa-lock"></i> Contraseña</p>
-                                <div class="flex items-center gap-2">
-                                    <input type="password" id="p_field" readonly value="<?= $activo['r_pass_activo'] ?>" class="bg-transparent border-none p-0 font-bold font-mono outline-none w-24">
-                                    <button onclick="toggleP()" class="text-slate-400 hover:text-brand-600 no-print"><i id="p_icon" class="fas fa-eye"></i></button>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-
 
                             <!-- ── Campos Dinámicos (colapsable) ── -->
                             <?php if (!empty($campos_dinamicos)): ?>
@@ -638,20 +682,6 @@ try {
             }
         }
 
-        // ── Mostrar/ocultar contraseña (admin) ───────────────────────────────
-        function togglePwdVer() {
-            const dots  = document.getElementById('pwd-display');
-            const real  = document.getElementById('pwd-actual');
-            const icon  = document.getElementById('pwd-eye-icon');
-            const lbl   = document.getElementById('pwd-eye-label');
-            if (!dots || !real) return;
-            const show  = real.classList.contains('hidden');
-            real.classList.toggle('hidden', !show);
-            dots.classList.toggle('hidden', show);
-            icon.className = show ? 'fas fa-eye-slash text-xs' : 'fas fa-eye text-xs';
-            lbl.textContent = show ? 'Ocultar' : 'Mostrar';
-        }
-
         // ── Toast de URL params ──────────────────────────────────────────────
         window.addEventListener('load', () => {
             const params = new URLSearchParams(window.location.search);
@@ -699,6 +729,7 @@ try {
             }
         }
     </script>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>
 

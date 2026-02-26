@@ -9,23 +9,33 @@ require_once '../config/config.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regenerar Códigos QR | SIH_QR</title>
+        <!-- Dark mode: aplicar clase antes del render para evitar flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/custom_sidebar.css">
-    <script>tailwind.config={theme:{extend:{colors:{brand:{50:'#fff1f2',100:'#ffe4e6',600:'#e11d48',700:'#be123c'}},fontFamily:{sans:['Plus Jakarta Sans','sans-serif']}}}}</script>
+    <script>tailwind.config = { darkMode: 'class', theme:{extend:{colors:{brand:{50:'#fff1f2',100:'#ffe4e6',600:'#e11d48',700:'#be123c'}},fontFamily:{sans:['Plus Jakarta Sans','sans-serif']}}}}</script>
     <style>
         .red-gradient { background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); }
         .glass-card   { background:rgba(255,255,255,0.75); backdrop-filter:blur(12px); border:2px solid rgba(225,29,72,0.08); }
         #progressBar  { transition: width 0.4s ease; }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden"
       style="background: radial-gradient(circle at top left, #fff1f2, #f8fafc);">
 
     <?php include '../includes/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden w-full min-w-0">
+    <main class="flex-1 flex flex-col pt-14 md:pt-0 h-full overflow-hidden w-full min-w-0">
         <div class="flex-1 overflow-y-auto p-6 md:p-10">
             <div class="max-w-3xl mx-auto space-y-6">
 
@@ -227,5 +237,6 @@ require_once '../config/config.php';
             }
         }
     </script>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

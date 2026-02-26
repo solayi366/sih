@@ -5,12 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - SIH</title>
+        <!-- Dark mode -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -27,7 +37,24 @@
     <style>
         .ruby-gradient { background: radial-gradient(circle at top left, #e11d48 0%, #4c0519 100%); }
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        /* Dark mode overrides para login */
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.97) !important;
+            border-color: rgba(51,65,85,0.6) !important;
+        }
+        .dark .glass-card .text-slate-900 { color: #f1f5f9 !important; }
+        .dark .glass-card .text-slate-400 { color: #64748b !important; }
+        .dark .glass-card input {
+            background: #273549 !important;
+            border-color: #334155 !important;
+            color: #f1f5f9 !important;
+        }
+        .dark .glass-card input::placeholder { color: #475569 !important; }
+        .dark .glass-card .border-slate-200 { border-color: #334155 !important; }
+        .dark .glass-card .text-slate-500 { color: #64748b !important; }
+        .dark .glass-card .bg-rose-50 { background: rgba(225,29,72,0.1) !important; }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="ruby-gradient min-h-screen flex items-center justify-center p-4 antialiased font-sans">
 
@@ -92,5 +119,6 @@
         <span class="text-white font-black text-6xl tracking-tighter uppercase select-none">SIH_QR</span>
     </div>
 
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

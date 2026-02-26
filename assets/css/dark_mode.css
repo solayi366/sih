@@ -1,0 +1,300 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SIH — DARK MODE  (class strategy: <html class="dark">)
+   Todas las páginas del panel admin leen estas variables.
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ── Transición suave al cambiar de tema ─────────────────────────── */
+*, *::before, *::after {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease !important;
+}
+/* Excepciones: animaciones y transformaciones no deben verse afectadas */
+.orb, .orb-1, .orb-2, .orb-3,
+[class*="animate-"],
+[class*="transition-transform"],
+.modal-container,
+canvas {
+    transition: none !important;
+}
+
+/* ── Variables base (modo claro por defecto) ─────────────────────── */
+:root {
+    --bg-page:        #f8fafc;
+    --bg-sidebar:     #ffffff;
+    --bg-card:        #ffffff;
+    --bg-card-hover:  #f8fafc;
+    --bg-input:       #ffffff;
+    --bg-header:      #ffffff;
+    --bg-sub:         #f1f5f9;
+
+    --border-color:   #e2e8f0;
+    --border-light:   #f1f5f9;
+
+    --text-primary:   #0f172a;
+    --text-secondary: #475569;
+    --text-muted:     #94a3b8;
+    --text-white:     #ffffff;
+
+    --shadow-sm:      0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md:      0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* ── Variables modo oscuro ───────────────────────────────────────── */
+.dark {
+    --bg-page:        #0f172a;
+    --bg-sidebar:     #1e293b;
+    --bg-card:        #1e293b;
+    --bg-card-hover:  #273549;
+    --bg-input:       #273549;
+    --bg-header:      #1e293b;
+    --bg-sub:         #273549;
+
+    --border-color:   #334155;
+    --border-light:   #1e293b;
+
+    --text-primary:   #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted:     #64748b;
+    --text-white:     #ffffff;
+
+    --shadow-sm:      0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md:      0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ── Aplicar variables al body / page ───────────────────────────── */
+.dark body {
+    background-color: var(--bg-page) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.dark #sidebar {
+    background-color: var(--bg-sidebar) !important;
+    border-color: var(--border-color) !important;
+}
+.dark #sidebar .border-b {
+    border-color: var(--border-color) !important;
+}
+.dark #sidebar .border-t {
+    border-color: var(--border-color) !important;
+}
+/* Logo texto */
+.dark .logo-text { color: var(--text-primary) !important; }
+
+/* Nav links */
+.dark #sidebar a.text-slate-600 {
+    color: var(--text-secondary) !important;
+}
+.dark #sidebar a:hover,
+.dark #sidebar button:hover {
+    background-color: #273549 !important;
+    color: #f1f5f9 !important;
+}
+/* Estado activo de nav */
+.dark #sidebar .bg-brand-50 {
+    background-color: rgba(225,29,72,0.15) !important;
+}
+.dark #sidebar .text-brand-700 { color: #f43f5e !important; }
+
+/* Section titles */
+.dark .section-title { color: #475569 !important; }
+
+/* Footer sidebar (user info) */
+.dark #sidebar .bg-slate-50\/50 {
+    background-color: #151f2e !important;
+}
+.dark #sidebar p.text-slate-900,
+.dark #sidebar .text-slate-900 { color: var(--text-primary) !important; }
+
+/* Toggle button */
+.dark #sidebar button.bg-white {
+    background-color: var(--bg-sidebar) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-muted) !important;
+}
+
+/* Mobile overlay button */
+.dark #sidebar button.text-slate-500 { color: var(--text-muted) !important; }
+
+/* Submenu links */
+.dark #sidebar .text-slate-400 { color: #64748b !important; }
+.dark #sidebar .text-slate-400:hover { color: #f43f5e !important; }
+
+/* ── Main / Header mobile ────────────────────────────────────────── */
+.dark main { background-color: var(--bg-page) !important; }
+.dark header {
+    background-color: var(--bg-header) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* ── Cards / panels / boxes ──────────────────────────────────────── */
+.dark .bg-white {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50 {
+    background-color: var(--bg-sub) !important;
+}
+.dark .bg-slate-100 { background-color: #1a2535 !important; }
+
+/* ── Texto ───────────────────────────────────────────────────────── */
+.dark .text-slate-900 { color: var(--text-primary) !important; }
+.dark .text-slate-800 { color: #e2e8f0 !important; }
+.dark .text-slate-700 { color: #cbd5e1 !important; }
+.dark .text-slate-600 { color: #94a3b8 !important; }
+.dark .text-slate-500 { color: #64748b !important; }
+.dark .text-slate-400 { color: #475569 !important; }
+
+/* ── Bordes ──────────────────────────────────────────────────────── */
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300 {
+    border-color: var(--border-color) !important;
+}
+
+/* ── Inputs y formularios ────────────────────────────────────────── */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark select,
+.dark textarea {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #475569 !important; }
+
+/* Input group ruby */
+.dark .input-group-ruby {
+    background: var(--bg-input) !important;
+    border-color: var(--border-color) !important;
+}
+.dark .input-group-ruby:focus-within {
+    border-color: #e11d48 !important;
+}
+.dark .input-icon-box {
+    background: #1e293b !important;
+    border-color: var(--border-color) !important;
+}
+
+/* ── Tablas ──────────────────────────────────────────────────────── */
+.dark table thead,
+.dark thead tr,
+.dark thead th {
+    background-color: var(--bg-sub) !important;
+    color: var(--text-muted) !important;
+    border-color: var(--border-color) !important;
+}
+.dark tbody tr {
+    border-color: var(--border-color) !important;
+}
+.dark tbody tr:hover {
+    background-color: #273549 !important;
+}
+.dark td, .dark th {
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Badges / pills ─────────────────────────────────────────────── */
+.dark .bg-emerald-50  { background-color: rgba(16,185,129,0.12) !important; }
+.dark .bg-amber-50    { background-color: rgba(245,158,11,0.12) !important; }
+.dark .bg-rose-50,
+.dark .bg-red-50      { background-color: rgba(225,29,72,0.12) !important; }
+.dark .bg-brand-50    { background-color: rgba(225,29,72,0.12) !important; }
+.dark .bg-slate-100   { background-color: #273549 !important; }
+
+/* ── Modales ─────────────────────────────────────────────────────── */
+.dark .modal-overlay  { background-color: rgba(0,0,0,0.7) !important; }
+.dark .modal-container,
+.dark [class*="modal"] .bg-white {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* ── SweetAlert2 en modo oscuro ──────────────────────────────────── */
+.dark .swal2-popup {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #334155 !important;
+}
+.dark .swal2-title   { color: #f1f5f9 !important; }
+.dark .swal2-html-container { color: #94a3b8 !important; }
+.dark .swal2-cancel  {
+    background: #273549 !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+.dark ::-webkit-scrollbar { width: 6px; height: 6px; }
+.dark ::-webkit-scrollbar-track { background: #1e293b; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+
+/* ── Header móvil dark mode ─────────────────────────────────────── */
+.dark header.md\:hidden,
+.dark header[class*="md:hidden"] {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+/* ── Botón toggle dark mode ──────────────────────────────────────── */
+#darkToggleBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+#darkToggleBtn:hover {
+    background: rgba(225,29,72,0.1);
+    color: #e11d48;
+}
+.dark #darkToggleBtn { color: #f59e0b; }
+.dark #darkToggleBtn:hover { background: rgba(245,158,11,0.12); color: #fbbf24; }
+
+/* ── Variantes de fondo con opacidad (Tailwind genera estas clases) ── */
+.dark [class*="bg-slate-50"],
+.dark [class*="bg-slate-100"] {
+    background-color: #273549 !important;
+}
+.dark [class*="bg-white"] {
+    background-color: #1e293b !important;
+}
+/* Excepciones: mantener rojo, verde, ámbar brand intact */
+.dark [class*="bg-brand-"],
+.dark [class*="bg-emerald-"],
+.dark [class*="bg-amber-"],
+.dark [class*="bg-rose-"],
+.dark [class*="bg-red-"],
+.dark .bg-brand-600,
+.dark .red-gradient,
+.dark [class*="bg-slate-800"],
+.dark [class*="bg-slate-900"] {
+    /* no override — dejar que sus propias clases actúen */
+    background-color: unset;
+}
+/* Re-aplicar los oscuros explícitos */
+.dark .bg-slate-800  { background-color: #1e293b !important; }
+.dark .bg-slate-900  { background-color: #0f172a !important; }
+.dark .bg-brand-600  { background-color: #e11d48 !important; }
+
+/* Bordes con opacidad */
+.dark [class*="border-slate-50"],
+.dark [class*="border-slate-100"],
+.dark [class*="border-slate-200"] {
+    border-color: #334155 !important;
+}
+/* divide-y */
+.dark [class*="divide-slate"] > * + * {
+    border-color: #334155 !important;
+}

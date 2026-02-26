@@ -11,12 +11,22 @@ require_once '../config/config.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reportar Daño | Mesa de Ayuda</title>
+        <!-- Dark mode -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: { extend: { colors: { brand: { 200:'#fecdd3', 600:'#e11d48', 900:'#881337' } } } }
         }
     </script>
@@ -24,9 +34,24 @@ require_once '../config/config.php';
         .label-form { display:block; font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:5px; }
         .input-form  { width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px; font-weight:bold; color:#334155; outline:none; transition:all .3s; background:#fff; }
         .input-form:focus { border-color:#e11d48; background:#fff1f2; }
+        /* Dark mode portal */
+        .dark body { background-color: #0f172a !important; color: #f1f5f9 !important; }
+        .dark .input-form { background:#1e293b !important; border-color:#334155 !important; color:#f1f5f9 !important; }
+        .dark .input-form:focus { background:#273549 !important; border-color:#e11d48 !important; }
+        .dark .bg-white { background:#1e293b !important; border-color:#334155 !important; }
+        .dark .bg-slate-50 { background:#273549 !important; }
+        .dark .bg-slate-100 { background:#0f172a !important; }
+        .dark .text-slate-900 { color:#f1f5f9 !important; }
+        .dark .text-slate-700 { color:#cbd5e1 !important; }
+        .dark .text-slate-600 { color:#94a3b8 !important; }
+        .dark .text-slate-500 { color:#64748b !important; }
+        .dark .border-slate-200 { border-color:#334155 !important; }
+        .dark select { background:#1e293b !important; border-color:#334155 !important; color:#f1f5f9 !important; }
+        .dark textarea { background:#1e293b !important; border-color:#334155 !important; color:#f1f5f9 !important; }
         @keyframes slide-up { from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         .animate-slide-up { animation: slide-up .3s ease forwards; }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="bg-slate-100 min-h-screen font-sans" style="font-family:'Plus Jakarta Sans',sans-serif">
 
@@ -237,5 +262,6 @@ require_once '../config/config.php';
             }
         }
     </script>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

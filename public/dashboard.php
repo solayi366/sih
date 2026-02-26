@@ -13,6 +13,15 @@ if (!isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | SIH_QR</title>
+        <!-- Dark mode: aplicar clase antes del render para evitar flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,6 +29,7 @@ if (!isset($_SESSION['user_id'])) {
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -48,21 +58,14 @@ if (!isset($_SESSION['user_id'])) {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 
 <body class="text-slate-800 antialiased font-sans h-screen flex overflow-hidden">
 
     <?php include '../includes/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50/50 w-full">
-
-        <header class="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 sticky top-0">
-            <button onclick="toggleMobileMenu()" class="text-slate-500 hover:text-brand-600 p-2">
-                <i class="fas fa-bars text-xl"></i>
-            </button>
-            <span class="font-black text-lg uppercase text-slate-900">SIH<span class="text-brand-600">QR</span></span>
-            <div class="w-8"></div>
-        </header>
+    <main class="flex-1 flex flex-col pt-14 md:pt-0 h-full overflow-hidden relative bg-slate-50/50 w-full">
 
         <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth w-full">
             
@@ -136,6 +139,11 @@ if (!isset($_SESSION['user_id'])) {
                 document.getElementById('totalBuenos').textContent = data.operativos;
                 document.getElementById('totalProblemas').textContent = data.atencion;
 
+                // Detectar modo oscuro para los charts
+                const isDark = () => document.documentElement.classList.contains('dark');
+                const chartTextColor = () => isDark() ? '#94a3b8' : '#64748b';
+                const chartGridColor = () => isDark() ? '#1e293b' : '#f1f5f9';
+
                 // Gráfica de Rosca (Estados)
                 new Chart(document.getElementById('chartEstado'), {
                     type: 'doughnut',
@@ -147,7 +155,15 @@ if (!isset($_SESSION['user_id'])) {
                             borderWidth: 0 
                         }]
                     },
-                    options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { color: chartTextColor(), font: { family: 'Plus Jakarta Sans', weight: '700' } }
+                            }
+                        }
+                    }
                 });
 
                 // Gráfica de Barras (Marcas)
@@ -165,10 +181,21 @@ if (!isset($_SESSION['user_id'])) {
                     options: { 
                         maintainAspectRatio: false, 
                         plugins: { legend: { display: false } }, 
-                        scales: { y: { beginAtZero: true } } 
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: chartTextColor() },
+                                grid:  { color: chartGridColor() }
+                            },
+                            x: {
+                                ticks: { color: chartTextColor() },
+                                grid:  { color: 'transparent' }
+                            }
+                        }
                     }
                 });
             });
     </script>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

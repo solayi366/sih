@@ -4,8 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>¡Reporte Recibido! | Mesa de Ayuda</title>
+        <!-- Dark mode -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="bg-emerald-500 min-h-screen flex items-center justify-center p-6">
     <?php $ticket = htmlspecialchars($_GET['ticket'] ?? ''); ?>
@@ -32,5 +45,6 @@
             Volver al Inicio
         </a>
     </div>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

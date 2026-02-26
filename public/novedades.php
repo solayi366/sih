@@ -13,6 +13,15 @@ $total      = $res['total'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mesa de Ayuda | SIH_QR</title>
+        <!-- Dark mode: aplicar clase antes del render para evitar flash -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('sihTheme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="../assets/css/alerts.css">
@@ -21,6 +30,7 @@ $total      = $res['total'];
     <link rel="stylesheet" href="../assets/css/custom_sidebar.css">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: { brand: { 50:'#fff1f2', 100:'#ffe4e6', 600:'#e11d48', 700:'#be123c' } },
@@ -29,12 +39,13 @@ $total      = $res['total'];
             }
         }
     </script>
+    <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
 <body class="bg-slate-50 antialiased font-sans h-screen flex overflow-hidden">
 
     <?php include '../includes/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full min-w-0">
+    <main class="flex-1 flex flex-col pt-14 md:pt-0 h-full overflow-hidden relative w-full min-w-0">
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 w-full">
             <div class="max-w-7xl mx-auto">
 
@@ -258,5 +269,6 @@ $total      = $res['total'];
 
         modal.addEventListener('click', e => { if (e.target === modal) cerrarModal(); });
     </script>
+    <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>
