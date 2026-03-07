@@ -293,13 +293,27 @@ class ParametrosController {
                     break;
             }
 
-            if ($res && isset($res['id_res']) && $res['id_res'] > 0) {
+            $ok = $res && isset($res['id_res']) && $res['id_res'] > 0;
+
+            // Petición AJAX → devolver JSON y no redirigir
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => $ok, 'msg' => $res['msj'] ?? 'Operación fallida', 'csrf' => Csrf::newToken()]);
+                exit();
+            }
+
+            if ($ok) {
                 header("Location: ../public/$return_page?msg=" . urlencode($res['msj']) . "&tipo=success");
             } else {
                 header("Location: ../public/$return_page?msg=" . urlencode($res['msj'] ?? 'Operación fallida') . "&tipo=danger");
             }
 
         } catch (Exception $e) {
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'msg' => 'ERROR: ' . $e->getMessage(), 'csrf' => Csrf::newToken()]);
+                exit();
+            }
             header("Location: ../public/$return_page?msg=" . urlencode("ERROR: " . $e->getMessage()) . "&tipo=danger");
         }
         exit();
@@ -325,6 +339,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
  * Bloque de ejecución: Procesa peticiones POST y acciones DELETE vía GET
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || (isset($_GET['action']) && $_GET['action'] === 'delete')) {
+
+    // Acciones AJAX internas que no pasan por <form> HTML — no llevan CSRF
+    $accionesAjax = ['crear_marca', 'toggleCampo', 'crearCampo'];
+    $accionPost   = $_POST['accion'] ?? $_POST['action'] ?? '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !in_array($accionPost, $accionesAjax, true)) {
+        require_once __DIR__ . '/../core/Csrf.php';
+        Csrf::verify('../public/activos.php');
+    }
 
     // Endpoint AJAX especial: crear_marca desde el analizador de Excel
     // Devuelve JSON en lugar de redirigir

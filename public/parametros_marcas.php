@@ -1,6 +1,9 @@
 <?php
 require_once '../controllers/parametrosController.php';
-$data = ParametrosController::getHardwareData();
+require_once '../core/Csrf.php';
+$data   = ParametrosController::getHardwareData();
+$marcas = $data['marcas'];
+$total  = count($marcas);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -38,12 +41,32 @@ $data = ParametrosController::getHardwareData();
                     </button>
                 </div>
 
-                <p class="text-xs font-bold text-slate-400 mb-3"><?= count($data['marcas']) ?> marca<?= count($data['marcas'])!=1?'s':'' ?> registrada<?= count($data['marcas'])!=1?'s':'' ?></p>
+                <!-- Buscador + Filtro tipo -->
+                <div class="mb-4 flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="buscadorMarcas" placeholder="Buscar marca..."
+                               class="w-full pl-9 pr-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-semibold focus:border-brand-600 outline-none transition-all bg-white">
+                    </div>
+                    <div class="relative">
+                        <select id="filtroTipoMarca" class="pl-4 pr-8 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-semibold focus:border-brand-600 outline-none bg-white appearance-none cursor-pointer min-w-[170px]">
+                            <option value="">Todos los tipos</option>
+                            <?php
+                            $tipos_unicos = array_unique(array_column($marcas, 'r_tipo'));
+                            sort($tipos_unicos);
+                            foreach ($tipos_unicos as $tp): ?>
+                            <option value="<?= htmlspecialchars($tp) ?>"><?= htmlspecialchars($tp) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Contador -->
+                <p class="text-xs font-bold text-slate-400 mb-3" id="contadorMarcas"></p>
 
                 <!-- Lista -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
-                    <!-- Cabecera desktop -->
                     <div class="hidden md:grid grid-cols-[60px_1fr_160px_80px] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         <span># ID</span>
                         <span>Marca</span>
@@ -51,16 +74,16 @@ $data = ParametrosController::getHardwareData();
                         <span class="text-right">Acción</span>
                     </div>
 
-                    <div class="divide-y divide-slate-100">
-                        <?php foreach ($data['marcas'] as $m): ?>
-                        <div class="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                    <div id="listaMarcas" class="divide-y divide-slate-100">
+                        <?php foreach ($marcas as $m): ?>
+                        <div class="fila-marca flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors"
+                             data-nombre="<?= strtolower(htmlspecialchars($m['r_nombre'])) ?>"
+                             data-tipo="<?= htmlspecialchars($m['r_tipo']) ?>">
 
-                            <!-- Icono -->
                             <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                                 <i class="fas fa-tag text-slate-500 text-sm"></i>
                             </div>
 
-                            <!-- Info -->
                             <div class="flex-1 min-w-0">
                                 <p class="font-bold text-slate-800 text-sm"><?= htmlspecialchars($m['r_nombre']) ?></p>
                                 <div class="flex items-center gap-2 mt-0.5">
@@ -69,7 +92,6 @@ $data = ParametrosController::getHardwareData();
                                 </div>
                             </div>
 
-                            <!-- Acciones -->
                             <div class="flex items-center gap-1 shrink-0">
                                 <button onclick="abrirEdicion(<?= $m['r_id'] ?>, '<?= addslashes($m['r_nombre']) ?>')"
                                         class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-all">
@@ -82,13 +104,34 @@ $data = ParametrosController::getHardwareData();
                             </div>
                         </div>
                         <?php endforeach; ?>
+                    </div>
 
-                        <?php if (empty($data['marcas'])): ?>
-                        <div class="py-16 text-center text-slate-400">
-                            <i class="fas fa-tag text-3xl mb-3 opacity-30"></i>
-                            <p class="text-sm font-bold">No hay marcas registradas</p>
-                        </div>
-                        <?php endif; ?>
+                    <div id="sinResultadosMarca" class="hidden py-16 text-center text-slate-400">
+                        <i class="fas fa-search text-3xl mb-3 opacity-30"></i>
+                        <p class="text-sm font-bold">Sin resultados para tu búsqueda</p>
+                    </div>
+
+                    <?php if (empty($marcas)): ?>
+                    <div class="py-16 text-center text-slate-400">
+                        <i class="fas fa-tag text-3xl mb-3 opacity-30"></i>
+                        <p class="text-sm font-bold">No hay marcas registradas</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Paginador -->
+                <div id="paginadorMarcas" class="flex items-center justify-between mt-5 gap-3 flex-wrap">
+                    <span id="infoPaginaMarca" class="text-xs font-bold text-slate-400"></span>
+                    <div class="flex items-center gap-2">
+                        <button id="btnPrevMarca" onclick="cambiarPaginaMarca(-1)"
+                                class="flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-black text-slate-500 hover:border-brand-600 hover:text-brand-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                            <i class="fas fa-chevron-left text-[10px]"></i> Anterior
+                        </button>
+                        <div id="numerosMarca" class="flex gap-1"></div>
+                        <button id="btnNextMarca" onclick="cambiarPaginaMarca(1)"
+                                class="flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-black text-slate-500 hover:border-brand-600 hover:text-brand-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                            Siguiente <i class="fas fa-chevron-right text-[10px]"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -104,6 +147,7 @@ $data = ParametrosController::getHardwareData();
                 <button onclick="cerrarModal('modalCrear')" class="text-white/50 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"><i class="fas fa-times text-sm"></i></button>
             </div>
             <form action="../controllers/parametrosController.php?ent=marca&action=create" method="POST">
+                    <?= Csrf::field() ?>
                 <div class="p-5 space-y-4">
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tipo de Equipo</label>
@@ -136,6 +180,7 @@ $data = ParametrosController::getHardwareData();
                 <button onclick="cerrarModal('modalEdicion')" class="text-white/50 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"><i class="fas fa-times text-sm"></i></button>
             </div>
             <form action="../controllers/parametrosController.php?ent=marca&action=update" method="POST">
+                    <?= Csrf::field() ?>
                 <input type="hidden" name="id_marca" id="edit_id">
                 <div class="p-5">
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nombre de Marca</label>
@@ -153,6 +198,82 @@ $data = ParametrosController::getHardwareData();
     <script src="../assets/js/sidebar_logic.js"></script>
     <script src="../assets/js/alerts.js"></script>
     <script src="../assets/js/utils.js"></script>
+    <script>
+        const POR_PAGINA_MAR = 15;
+        let paginaMar = 1;
+        const todasFilasMar = Array.from(document.querySelectorAll('.fila-marca'));
+        let filasFiltradasMar = [...todasFilasMar];
+
+        function filtrarMarcas() {
+            const q    = document.getElementById('buscadorMarcas').value.toLowerCase().trim();
+            const tipo = document.getElementById('filtroTipoMarca').value;
+            filasFiltradasMar = todasFilasMar.filter(f => {
+                const ok_txt  = !q || f.dataset.nombre.includes(q);
+                const ok_tipo = !tipo || f.dataset.tipo === tipo;
+                return ok_txt && ok_tipo;
+            });
+            paginaMar = 1;
+            renderMar();
+        }
+
+        function renderMar() {
+            const total  = filasFiltradasMar.length;
+            const totPag = Math.max(1, Math.ceil(total / POR_PAGINA_MAR));
+            if (paginaMar > totPag) paginaMar = totPag;
+            const ini = (paginaMar - 1) * POR_PAGINA_MAR;
+            const fin = ini + POR_PAGINA_MAR;
+
+            todasFilasMar.forEach(f => f.style.display = 'none');
+            filasFiltradasMar.forEach((f, i) => { f.style.display = (i >= ini && i < fin) ? '' : 'none'; });
+
+            document.getElementById('sinResultadosMarca').classList.toggle('hidden', total > 0);
+
+            const desde = total === 0 ? 0 : ini + 1;
+            const hasta = Math.min(fin, total);
+            document.getElementById('contadorMarcas').textContent =
+                total === 0 ? 'Sin resultados'
+                : `Mostrando ${desde}–${hasta} de ${total} marca${total !== 1 ? 's' : ''}`;
+
+            document.getElementById('btnPrevMarca').disabled = paginaMar <= 1;
+            document.getElementById('btnNextMarca').disabled = paginaMar >= totPag;
+            document.getElementById('infoPaginaMarca').textContent = totPag > 1 ? `Página ${paginaMar} de ${totPag}` : '';
+
+            const numDiv = document.getElementById('numerosMarca');
+            numDiv.innerHTML = '';
+            if (totPag > 1) {
+                generarRango(paginaMar, totPag).forEach(n => {
+                    if (n === '...') {
+                        numDiv.innerHTML += `<span class="px-2 text-slate-400 text-xs font-bold self-center">…</span>`;
+                    } else {
+                        const cls = n === paginaMar
+                            ? 'bg-brand-600 text-white border-brand-600'
+                            : 'border-slate-200 text-slate-500 hover:border-brand-600 hover:text-brand-600';
+                        numDiv.innerHTML += `<button onclick="irMar(${n})" class="w-8 h-8 flex items-center justify-center rounded-xl border-2 text-xs font-black transition-all ${cls}">${n}</button>`;
+                    }
+                });
+            }
+            document.getElementById('paginadorMarcas').style.display = totPag <= 1 ? 'none' : 'flex';
+        }
+
+        function generarRango(actual, total) {
+            if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+            if (actual <= 4) return [1,2,3,4,5,'...',total];
+            if (actual >= total - 3) return [1,'...',total-4,total-3,total-2,total-1,total];
+            return [1,'...',actual-1,actual,actual+1,'...',total];
+        }
+
+        function cambiarPaginaMarca(dir) {
+            const tot = Math.ceil(filasFiltradasMar.length / POR_PAGINA_MAR);
+            paginaMar = Math.max(1, Math.min(tot, paginaMar + dir));
+            renderMar();
+        }
+
+        function irMar(n) { paginaMar = n; renderMar(); }
+
+        document.getElementById('buscadorMarcas').addEventListener('input', filtrarMarcas);
+        document.getElementById('filtroTipoMarca').addEventListener('change', filtrarMarcas);
+        renderMar();
+    </script>
     <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

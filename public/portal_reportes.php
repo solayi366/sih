@@ -32,22 +32,22 @@ require_once '../config/config.php';
     </script>
     <style>
         .label-form { display:block; font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:5px; }
-        .input-form  { width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px; font-weight:bold; color:#334155; outline:none; transition:all .3s; background:#fff; }
+        .input-form  { width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px; font-weight:bold; color:rgba(255,255,255,0.07); outline:none; transition:all .3s; background:#fff; }
         .input-form:focus { border-color:#e11d48; background:#fff1f2; }
         /* Dark mode portal */
-        .dark body { background-color: #0f172a !important; color: #f1f5f9 !important; }
-        .dark .input-form { background:#1e293b !important; border-color:#334155 !important; color:#f1f5f9 !important; }
-        .dark .input-form:focus { background:#273549 !important; border-color:#e11d48 !important; }
-        .dark .bg-white { background:#1e293b !important; border-color:#334155 !important; }
-        .dark .bg-slate-50 { background:#273549 !important; }
-        .dark .bg-slate-100 { background:#0f172a !important; }
+        .dark body { background-color: #0a0a0f !important; color: #f1f5f9 !important; }
+        .dark .input-form { background:rgba(16,14,24,0.90) !important; border-color:rgba(255,255,255,0.07) !important; color:#f1f5f9 !important; }
+        .dark .input-form:focus { background:rgba(22,18,34,0.85) !important; border-color:#e11d48 !important; }
+        .dark .bg-white { background:rgba(16,14,24,0.90) !important; border-color:rgba(255,255,255,0.07) !important; }
+        .dark .bg-slate-50 { background:rgba(22,18,34,0.85) !important; }
+        .dark .bg-slate-100 { background:#0a0a0f !important; }
         .dark .text-slate-900 { color:#f1f5f9 !important; }
         .dark .text-slate-700 { color:#cbd5e1 !important; }
         .dark .text-slate-600 { color:#94a3b8 !important; }
         .dark .text-slate-500 { color:#64748b !important; }
-        .dark .border-slate-200 { border-color:#334155 !important; }
-        .dark select { background:#1e293b !important; border-color:#334155 !important; color:#f1f5f9 !important; }
-        .dark textarea { background:#1e293b !important; border-color:#334155 !important; color:#f1f5f9 !important; }
+        .dark .border-slate-200 { border-color:rgba(255,255,255,0.07) !important; }
+        .dark select { background:rgba(16,14,24,0.90) !important; border-color:rgba(255,255,255,0.07) !important; color:#f1f5f9 !important; }
+        .dark textarea { background:rgba(16,14,24,0.90) !important; border-color:rgba(255,255,255,0.07) !important; color:#f1f5f9 !important; }
         @keyframes slide-up { from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         .animate-slide-up { animation: slide-up .3s ease forwards; }
     </style>
@@ -116,13 +116,11 @@ require_once '../config/config.php';
                 <input type="hidden" id="formIdActivo">
 
                 <div>
-                    <label class="label-form">Tipo de Daño</label>
+                    <label class="label-form">Tipo de Novedad</label>
                     <select id="tipoDano" class="input-form">
-                        <option value="Hardware">Daño Físico (Golpe, Pantalla, Teclado)</option>
-                        <option value="Software">Lentitud / Virus / Programas</option>
-                        <option value="Red">Internet / Wifi</option>
-                        <option value="Periferico">Mouse / Cargador / Cables</option>
+                        <!-- Se llena dinámicamente según el activo seleccionado -->
                     </select>
+                    <p id="tipoDanoHint" class="text-[10px] text-slate-400 font-bold mt-1 hidden"></p>
                 </div>
 
                 <div>
@@ -156,7 +154,7 @@ require_once '../config/config.php';
         // ── Buscar empleado y sus activos ─────────────────────────────────────
         async function buscarActivos() {
             const cedula = document.getElementById('cedulaInput').value.trim();
-            if (cedula.length < 2) return Swal.fire('Atención', 'Ingresa un código de nómina válido', 'warning');
+            if (cedula.length < 2) return Alerts.warning('Atención', 'Ingresa un código de nómina válido');
 
             const icon = document.getElementById('iconBuscar');
             icon.className = 'fas fa-spinner fa-spin';
@@ -166,7 +164,7 @@ require_once '../config/config.php';
                 const data = await res.json();
 
                 if (!data.encontrado) {
-                    Swal.fire('No encontrado', data.mensaje, 'info');
+                    Alerts.info('No encontrado', data.mensaje);
                     document.getElementById('step-2').classList.add('hidden');
                 } else {
                     document.getElementById('nombreEmpleado').innerText = data.empleado.split(' ')[0];
@@ -181,13 +179,17 @@ require_once '../config/config.php';
                     } else {
                         sinActivos.classList.add('hidden');
                         data.activos.forEach(act => {
+                            const badge = act.es_periferico
+                                ? `<span class="text-[9px] font-black uppercase bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Periférico</span>`
+                                : `<span class="text-[9px] font-black uppercase bg-rose-50 text-rose-500 px-2 py-0.5 rounded-full">Principal</span>`;
                             container.innerHTML += `
-                            <div onclick="abrirReporte('${act.id}', '${act.tipo} ${act.marca}')"
+                            <div onclick="abrirReporte('${act.id}', '${act.tipo} ${act.marca}', ${act.es_periferico ? 'true' : 'false'})"
                                  class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 cursor-pointer hover:border-brand-600 active:scale-95 transition-all">
                                 <div class="bg-slate-100 p-2 rounded-xl flex-shrink-0">
                                     <img src="${act.foto_qr}" class="w-12 h-12 opacity-80" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22><rect width=%2248%22 height=%2248%22 fill=%22%23f1f5f9%22/></svg>'">
                                 </div>
                                 <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-0.5">${badge}</div>
                                     <h4 class="font-black text-slate-800 text-sm">${act.tipo}</h4>
                                     <p class="text-xs text-slate-500 font-bold">${act.marca} ${act.modelo}</p>
                                     <p class="text-[10px] text-slate-400 font-mono mt-0.5">S/N: ${act.serial}</p>
@@ -201,16 +203,47 @@ require_once '../config/config.php';
                 }
             } catch (e) {
                 console.error(e);
-                Swal.fire('Error', 'No se pudo conectar al servidor', 'error');
+                Alerts.error('Error', 'No se pudo conectar al servidor');
             } finally {
                 icon.className = 'fas fa-search';
             }
         }
 
+        // ── Opciones de novedad según tipo de activo ──────────────────────────
+        const OPCIONES_PRINCIPAL = [
+            { value: 'Daño Físico',              label: 'Daño Físico' },
+            { value: 'Actualización',             label: 'Actualización de Software' },
+            { value: 'Mantenimiento Preventivo', label: 'Mantenimiento Preventivo' },
+            { value: 'Falla de Software',         label: 'Falla de Software' },
+        ];
+        const OPCIONES_PERIFERICO = [
+            { value: 'Daño Físico', label: 'Daño Físico' },
+            { value: 'Pérdida',     label: 'Pérdida o Extravío' },
+        ];
+
         // ── Modal ─────────────────────────────────────────────────────────────
-        function abrirReporte(id, nombre) {
+        function abrirReporte(id, nombre, esPeriferico) {
             document.getElementById('formIdActivo').value = id;
             document.getElementById('labelActivoSeleccionado').innerText = nombre;
+
+            // Llenar select dependiente
+            const select = document.getElementById('tipoDano');
+            const hint   = document.getElementById('tipoDanoHint');
+            select.innerHTML = '';
+            const opciones = esPeriferico ? OPCIONES_PERIFERICO : OPCIONES_PRINCIPAL;
+            opciones.forEach(op => {
+                const opt = document.createElement('option');
+                opt.value = op.value;
+                opt.textContent = op.label;
+                select.appendChild(opt);
+            });
+
+            // Mostrar hint informativo
+            hint.classList.remove('hidden');
+            hint.textContent = esPeriferico
+                ? 'Describe la novedad brevemente'
+                : 'Describe la novedad brevemente';
+
             document.getElementById('modalReporte').classList.remove('hidden');
             document.getElementById('modalReporte').classList.add('flex');
         }
@@ -236,7 +269,7 @@ require_once '../config/config.php';
         // ── Enviar reporte ────────────────────────────────────────────────────
         async function enviarReporte() {
             const descripcion = document.getElementById('descripcion').value.trim();
-            if (!descripcion) return Swal.fire('Atención', 'Describe el problema antes de enviar', 'warning');
+            if (!descripcion) return Alerts.warning('Atención', 'Describe la novedad antes de enviar');
 
             const fd = new FormData();
             fd.append('cedula',      document.getElementById('formCedula').value);
@@ -245,23 +278,24 @@ require_once '../config/config.php';
             fd.append('descripcion', descripcion);
             if (imagenComprimida) fd.append('foto', imagenComprimida, imagenComprimida.name);
 
-            Swal.fire({ title: 'Enviando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Alerts.loading('Enviando...');
 
             try {
                 const res  = await fetch(`${API_BASE}/crear_ticket.php`, { method: 'POST', body: fd });
                 const data = await res.json();
 
                 if (data.success) {
-                    Swal.close();
+                    Alerts.close();
                     window.location.href = `portal_exito.php?ticket=${data.id_ticket}`;
                 } else {
-                    Swal.fire('Error', data.msg || 'No se pudo crear el ticket', 'error');
+                    Alerts.error('Error', data.msg || 'No se pudo crear el ticket');
                 }
             } catch (e) {
-                Swal.fire('Error', 'Fallo de conexión con el servidor', 'error');
+                Alerts.error('Error', 'Fallo de conexión con el servidor');
             }
         }
     </script>
+    <script src="../assets/js/alerts.js"></script>
     <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

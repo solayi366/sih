@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/database.php';
+require_once __DIR__ . '/../core/HistorialHelper.php';
 
 class ActivoEditarController {
 
@@ -52,11 +53,11 @@ class ActivoEditarController {
                 'activo'  => $activo,
                 'tipos'   => $db->query("SELECT id_tipoequi, nom_tipo FROM tab_tipos ORDER BY nom_tipo")->fetchAll(),
                 'marcas'  => $db->query("SELECT id_marca, nom_marca FROM tab_marca ORDER BY nom_marca")->fetchAll(),
-                'modelos' => $db->query("SELECT id_modelo, nom_modelo, id_tipoequi FROM tab_modelo")->fetchAll(),
+                'modelos' => $db->query("SELECT id_modelo, nom_modelo, id_tipoequi, id_marca FROM tab_modelo")->fetchAll(),
                 'areas'   => $db->query("SELECT id_area, nom_area FROM tab_area ORDER BY nom_area")->fetchAll(),
                 'campos_dinamicos' => $campos_dinamicos,
                 'padres'  => $db->query(
-                    "SELECT id_activo, serial, referencia FROM tab_activotec
+                    "SELECT id_activo, serial, COALESCE(hostname, serial, 'Sin identificador') AS hostname, referencia FROM tab_activotec
                      WHERE id_padre_activo IS NULL AND activo = TRUE
                      ORDER BY id_activo DESC"
                 )->fetchAll(),
@@ -97,9 +98,11 @@ class ActivoEditarController {
             }
 
             $id_padre = !empty($postData['id_padre_activo']) ? (int)$postData['id_padre_activo'] : null;
-
-            // Contraseña: solo guardar si viene (no piso con null si está vacío)
             $password_nuevo = !empty($postData['password_activo']) ? $postData['password_activo'] : null;
+
+            // ── Leer estado ANTES del update ──────────────────────────────────
+            $antes         = HistorialHelper::leerActivo($db, $id);
+            $camposDinAntes = HistorialHelper::leerCamposDin($db, $id);
 
             $stmtUpd = $db->prepare(
                 "SELECT * FROM fun_update_activo(
@@ -142,6 +145,11 @@ class ActivoEditarController {
             }
 
             $db->commit();
+
+            // ── Registrar historial proporcional al cambio ────────────────────
+            $usuario = $_SESSION['username'] ?? (string)($_SESSION['user_id'] ?? 'sistema');
+            HistorialHelper::registrar($db, $id, HistorialHelper::EDICION, $usuario, $antes ?? [], $camposDinAntes ?? []);
+
             header("Location: ../public/ver.php?id={$id}&msg=Activo+actualizado+correctamente&tipo=success");
 
         } catch (Exception $e) {
@@ -157,5 +165,7 @@ class ActivoEditarController {
 
 // ── Router: POST → actualizar ─────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../core/Csrf.php';
+    Csrf::verify('../public/editar.php?id=' . ((int)($_POST['id_activo'] ?? 0)));
     ActivoEditarController::update($_POST);
 }

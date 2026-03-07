@@ -61,9 +61,9 @@ try {
 
         /* Body gradient solo en modo claro */
         #verBody { background: radial-gradient(circle at top left, #fff1f2, #f8fafc); }
-        .dark #verBody { background: #0f172a !important; }
+        .dark #verBody { background: #0a0a0f !important; }
         /* ── Dark mode: ver.php específico ── */
-        .dark body { background: #0f172a !important; }
+        .dark body { background: #0a0a0f !important; }
         .dark .glass-card {
             background: rgba(30, 41, 59, 0.97) !important;
             border-color: rgba(225, 29, 72, 0.25) !important;
@@ -71,47 +71,49 @@ try {
         /* Cards internas de datos (hostname, IP, MAC, serial) */
         .dark .p-4.bg-slate-50,
         .dark .p-6.bg-slate-50 {
-            background-color: #273549 !important;
-            border-color: #334155 !important;
+            background-color: rgba(22,18,34,0.85) !important;
+            border-color: rgba(255,255,255,0.07) !important;
         }
         .dark .p-4.bg-white,
         .dark .p-8.bg-white {
-            background-color: #1e293b !important;
-            border-color: #334155 !important;
+            background-color: rgba(16,14,24,0.90) !important;
+            border-color: rgba(255,255,255,0.07) !important;
         }
         /* Contenedor tabla novedades */
         .dark .rounded-\[2\.5rem\].bg-white,
         .dark .shadow-xl.bg-white {
-            background-color: #1e293b !important;
-            border-color: #334155 !important;
+            background-color: rgba(16,14,24,0.90) !important;
+            border-color: rgba(255,255,255,0.07) !important;
         }
         /* Thead de tabla */
-        .dark thead.bg-slate-50 { background-color: #273549 !important; }
-        .dark .border-b-2.border-slate-100 { border-color: #334155 !important; }
+        .dark thead.bg-slate-50 { background-color: rgba(22,18,34,0.85) !important; }
+        .dark .border-b-2.border-slate-100 { border-color: rgba(255,255,255,0.07) !important; }
         /* Botones header (atrás, editar, imprimir) */
         .dark button.bg-white,
         .dark a.bg-white {
-            background-color: #1e293b !important;
-            border-color: #334155 !important;
+            background-color: rgba(16,14,24,0.90) !important;
+            border-color: rgba(255,255,255,0.07) !important;
             color: #cbd5e1 !important;
         }
         .dark button.bg-white:hover,
         .dark a.bg-white:hover {
-            background-color: #273549 !important;
+            background-color: rgba(22,18,34,0.85) !important;
         }
         /* Icono tipo equipo */
-        .dark .inline-block.bg-white { background-color: #273549 !important; border-color: #334155 !important; }
+        .dark .inline-block.bg-white { background-color: rgba(22,18,34,0.85) !important; border-color: rgba(255,255,255,0.07) !important; }
         /* Shimmer dark */
         .dark .qr-shimmer {
-            background: linear-gradient(90deg, #1e293b 25%, #273549 50%, #1e293b 75%);
+            background: linear-gradient(90deg, rgba(16,14,24,0.90) 25%, rgba(22,18,34,0.85) 50%, rgba(16,14,24,0.90) 75%);
             background-size: 200% 100%;
         }
         /* Botones acción table */
-        .dark .bg-slate-100 { background-color: #273549 !important; }
-        .dark .hover\:bg-slate-200:hover { background-color: #334155 !important; }
+        .dark .bg-slate-100 { background-color: rgba(22,18,34,0.85) !important; }
+        .dark .hover\:bg-slate-200:hover { background-color: rgba(255,255,255,0.07) !important; }
 
         /* ── Estilos exclusivos para impresión de etiqueta QR ── */
         @media print {
+            @page { size: auto; margin: 4mm; }
+
             body > *:not(#printArea) { display: none !important; }
             #printArea {
                 display: flex !important;
@@ -120,8 +122,15 @@ try {
                 background: white;
                 align-items: center;
                 justify-content: center;
+                gap: 4mm;
                 z-index: 9999;
+                padding: 4mm;
             }
+            .qr-mini-sticker {
+                border: none !important;
+                box-shadow: none !important;
+            }
+            * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         }
 
         /* Animación de carga del QR */
@@ -171,8 +180,13 @@ try {
                         </a>
                         <a href="editar.php?id=<?= $activo['r_id'] ?>"
                            class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-2xl transition-all shadow-sm font-bold text-sm"
-                           title="Editar activo">
+                           title="Editar elemento tecnológico">
                             <i class="fas fa-pen-nib text-brand-500"></i>
+                        </a>
+                        <a href="historial.php?id=<?= $activo['r_id'] ?>"
+                           class="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-2xl transition-all shadow-sm font-bold text-sm"
+                           title="Ver historial de cambios">
+                            <i class="fas fa-clock-rotate-left text-slate-500"></i>
                         </a>
                         <?php endif; ?>
                         <?php if (isset($_SESSION['user_id'])): ?>
@@ -212,7 +226,7 @@ try {
                                 </div>
 
                                 <p class="text-xs font-black text-brand-300 uppercase tracking-widest mb-3">
-                                    Código QR del Activo
+                                    Código QR del Elemento Tecnológico
                                 </p>
 
                                 <!-- ── IMAGEN QR ── -->
@@ -289,7 +303,7 @@ try {
                                 <i class="fas fa-user-shield text-9xl -mb-8 -mr-8"></i>
                             </div>
                             <h3 class="text-brand-100/60 text-xs font-black uppercase tracking-widest mb-6">
-                                Custodio del Activo
+                                Usuario del Elemento Tecnológico
                             </h3>
 
                             <?php if ($activo['r_responsable']): ?>
@@ -367,6 +381,31 @@ try {
                                     <i class="fas fa-barcode text-4xl text-slate-200 group-hover:text-brand-100 transition-colors"></i>
                                 </div>
                             </div>
+
+                            <!-- Contraseña del equipo (solo si existe y es admin) -->
+                            <?php if (!empty($activo['r_password_activo']) && $es_admin): ?>
+                            <div class="mt-8 pt-8 border-t-2 border-slate-100">
+                                <div class="bg-slate-900 rounded-3xl p-6 flex items-center justify-between gap-4">
+                                    <div class="space-y-1">
+                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                            <i class="fas fa-lock text-brand-500"></i> Contraseña del Equipo
+                                            <span class="bg-brand-900/50 text-brand-400 text-[9px] px-2 py-0.5 rounded-full">Solo admins</span>
+                                        </span>
+                                        <p class="font-mono font-black text-xl tracking-widest text-white" id="pwd-text">
+                                            ••••••••••
+                                        </p>
+                                        <p class="font-mono font-black text-xl tracking-widest text-emerald-400 hidden" id="pwd-real">
+                                            <?= htmlspecialchars($activo['r_password_activo']) ?>
+                                        </p>
+                                    </div>
+                                    <button type="button" onclick="toggleVerPass()"
+                                        id="btn-ver-pass"
+                                        class="flex-shrink-0 w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white transition-all flex items-center justify-center">
+                                        <i class="fas fa-eye" id="icon-ver-pass"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <?php endif; ?>
 
                             <!-- Datos de red (solo si existen) -->
                             <?php if ($activo['r_hostname'] || $activo['r_ip'] || $activo['r_mac']): ?>
@@ -597,56 +636,30 @@ try {
     </main>
 
     <!-- ╔═══════════════════════════════════════════════════════╗ -->
-    <!-- ║   ÁREA DE IMPRESIÓN DE ETIQUETA QR (oculta en web)   ║ -->
+    <!-- ║   ÁREA DE IMPRESIÓN  — 3 etiquetas QR mini           ║ -->
     <!-- ╚═══════════════════════════════════════════════════════╝ -->
-    <div id="printArea" style="display:none;">
-        <div style="
-            width: 62mm;
-            padding: 6mm;
-            border: 1.5px solid #e11d48;
-            border-radius: 4mm;
-            font-family: 'Arial', sans-serif;
-            text-align: center;
+    <div id="printArea" style="display:none; flex-direction:row; align-items:center; justify-content:center; gap:6mm; padding:4mm; background:white;">
+        <?php
+        $qrSrc = '../controllers/qrController.php?codigo=' . urlencode($activo['r_qr'] ?? '');
+        for ($i = 0; $i < 3; $i++):
+        ?>
+        <div class="qr-mini-sticker" style="
+            width: 30mm;
+            height: 30mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d1d5db;
+            border-radius: 2mm;
             background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,.10);
         ">
-            <!-- Logo / título sistema -->
-            <div style="font-size: 8pt; font-weight: 900; color: #e11d48; letter-spacing: 2px; margin-bottom: 3mm; text-transform: uppercase;">
-                SIH_QR — Inventario
-            </div>
-
-            <!-- Imagen QR grande -->
-            <img id="printQrImg"
-                 src="../controllers/qrController.php?codigo=<?= urlencode($activo['r_qr'] ?? '') ?>&size=300"
+            <img src="<?= $qrSrc ?>"
                  alt="QR"
-                 style="width: 45mm; height: 45mm; display: block; margin: 0 auto 3mm;">
-
-            <!-- Código -->
-            <div style="font-size: 10pt; font-weight: 900; color: #1a1a2e; font-family: 'Courier New', monospace; letter-spacing: 1px; margin-bottom: 2mm;">
-                <?= htmlspecialchars($activo['r_qr'] ?? '') ?>
-            </div>
-
-            <!-- Info del activo -->
-            <div style="font-size: 7.5pt; color: #555; margin-bottom: 1mm;">
-                <strong><?= htmlspecialchars($activo['r_tipo']) ?></strong>
-                · <?= htmlspecialchars($activo['r_marca']) ?>
-            </div>
-            <?php if ($activo['r_serial']): ?>
-            <div style="font-size: 6.5pt; color: #888; font-family: 'Courier New', monospace;">
-                S/N: <?= htmlspecialchars($activo['r_serial']) ?>
-            </div>
-            <?php endif; ?>
-            <?php if ($activo['r_responsable']): ?>
-            <div style="font-size: 6.5pt; color: #888; margin-top: 1mm;">
-                <?= htmlspecialchars($activo['r_responsable']) ?>
-            </div>
-            <?php endif; ?>
-
-            <!-- Pie -->
-            <div style="font-size: 5.5pt; color: #ccc; margin-top: 3mm; border-top: 0.5px solid #eee; padding-top: 2mm;">
-                Escanea para ver ficha técnica
-            </div>
+                 style="width: 28mm; height: 28mm; display: block;">
         </div>
+        <?php endfor; ?>
     </div>
 
     <!-- Toast de notificaciones -->
@@ -705,28 +718,48 @@ try {
         // ── Imprimir etiqueta QR ─────────────────────────────────────────────
         function imprimirEtiqueta() {
             const printArea = document.getElementById('printArea');
-            const printImg  = document.getElementById('printQrImg');
+            const imgs = printArea.querySelectorAll('img');
 
-            // Esperar a que la imagen esté cargada antes de imprimir
-            if (!printImg.complete) {
-                const toast   = document.getElementById('liveToast');
-                const message = document.getElementById('toastMessage');
-                const icon    = document.getElementById('toastIcon');
-                message.textContent = 'Cargando imagen QR…';
-                icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                toast.classList.remove('translate-y-24', 'opacity-0');
-
-                printImg.onload = () => {
-                    toast.classList.add('translate-y-24', 'opacity-0');
-                    printArea.style.display = 'flex';
-                    window.print();
-                    printArea.style.display = 'none';
-                };
-            } else {
+            const mostrarImpresion = () => {
                 printArea.style.display = 'flex';
                 window.print();
                 printArea.style.display = 'none';
+            };
+
+            // Esperar a que todas las imágenes estén cargadas
+            const pendientes = Array.from(imgs).filter(img => !img.complete);
+            if (pendientes.length === 0) {
+                mostrarImpresion();
+            } else {
+                const toast   = document.getElementById('liveToast');
+                const message = document.getElementById('toastMessage');
+                const icon    = document.getElementById('toastIcon');
+                message.textContent = 'Cargando QRs…';
+                icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                toast.classList.remove('translate-y-24', 'opacity-0');
+
+                let cargadas = 0;
+                pendientes.forEach(img => {
+                    img.onload = img.onerror = () => {
+                        cargadas++;
+                        if (cargadas === pendientes.length) {
+                            toast.classList.add('translate-y-24', 'opacity-0');
+                            mostrarImpresion();
+                        }
+                    };
+                });
             }
+        }
+    </script>
+    <script>
+        function toggleVerPass() {
+            const puntos = document.getElementById('pwd-text');
+            const real   = document.getElementById('pwd-real');
+            const icon   = document.getElementById('icon-ver-pass');
+            const oculto = puntos.classList.contains('hidden');
+            puntos.classList.toggle('hidden', !oculto);
+            real.classList.toggle('hidden', oculto);
+            icon.className = oculto ? 'fas fa-eye-slash' : 'fas fa-eye';
         }
     </script>
     <script src="../assets/js/dark_mode.js"></script>

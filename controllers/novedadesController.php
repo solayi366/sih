@@ -12,25 +12,74 @@ class NovedadesController
             header('Location: ../public/login.php'); exit();
         }
 
-        $page  = max(1, (int)($_GET['page'] ?? 1));
-        $limit = 15;
+        $page       = max(1, (int)($_GET['page'] ?? 1));
+        $limit      = 15;
+        $filtroTipo  = trim($_GET['tipo']   ?? '');
+        $filtroEstado= trim($_GET['estado'] ?? '');
 
         try {
-            $db   = Database::conectar();
-            $stmt = $db->prepare('SELECT * FROM fun_read_novedades(:pag, :lim)');
-            $stmt->bindParam(':pag', $page, PDO::PARAM_INT);
-            $stmt->bindParam(':lim', $limit, PDO::PARAM_INT);
+            $db = Database::conectar();
+
+            $where  = "WHERE n.activo = TRUE";
+            $params = [':pag' => ($page - 1) * $limit, ':lim' => $limit];
+
+            if ($filtroTipo !== '') {
+                $where  .= " AND n.tipo_dano = :tipo";
+                $params[':tipo'] = $filtroTipo;
+            }
+            if ($filtroEstado !== '') {
+                $where  .= " AND n.estado_ticket = :estado";
+                $params[':estado'] = $filtroEstado;
+            }
+
+            // Total para paginación
+            $stmtCount = $db->prepare(
+                "SELECT COUNT(*) FROM tab_novedades n $where"
+            );
+            $countParams = array_filter($params, fn($k) => $k !== ':pag' && $k !== ':lim', ARRAY_FILTER_USE_KEY);
+            $stmtCount->execute($countParams);
+            $total = (int)$stmtCount->fetchColumn();
+
+            // Registros paginados
+            $stmt = $db->prepare(
+                "SELECT n.id_novedad, n.fecha_reporte, n.cedula_reportante, n.nombre_reportante,
+                        a.codigo_qr, a.referencia,
+                        n.tipo_dano, n.descripcion, n.evidencia_foto, n.estado_ticket
+                 FROM tab_novedades n
+                 LEFT JOIN tab_activotec a ON n.id_activo = a.id_activo
+                 $where
+                 ORDER BY n.fecha_reporte DESC
+                 LIMIT :lim OFFSET :pag"
+            );
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $total   = !empty($rows) ? (int)$rows[0]['total_registros'] : 0;
+            // Remapear columnas para mantener compatibilidad con la vista
+            $tickets = array_map(fn($r) => [
+                'r_id'               => $r['id_novedad'],
+                'r_fecha'            => $r['fecha_reporte'],
+                'r_cod_nom'          => $r['cedula_reportante'],
+                'r_nombre_reportante'=> $r['nombre_reportante'],
+                'r_activo_qr'        => $r['codigo_qr'],
+                'r_activo_ref'       => $r['referencia'],
+                'r_tipo_dano'        => $r['tipo_dano'],
+                'r_descripcion'      => $r['descripcion'],
+                'r_foto'             => $r['evidencia_foto'],
+                'r_estado'           => $r['estado_ticket'],
+            ], $rows);
+
             $t_pages = max(1, (int)ceil($total / $limit));
 
             return [
-                'tickets'     => $rows,
-                'page'        => $page,
-                'total_pages' => $t_pages,
-                'total'       => $total,
+                'tickets'      => $tickets,
+                'page'         => $page,
+                'total_pages'  => $t_pages,
+                'total'        => $total,
+                'filtro_tipo'  => $filtroTipo,
+                'filtro_estado'=> $filtroEstado,
             ];
         } catch (Exception $e) {
             error_log('NovedadesController::listar — ' . $e->getMessage());
@@ -45,6 +94,9 @@ class NovedadesController
         if (!isset($_SESSION['user_id'])) {
             http_response_code(403); exit('No autorizado');
         }
+
+        require_once __DIR__ . '/../core/Csrf.php';
+        Csrf::verify('../public/novedades.php');
 
         $id      = (int)($_POST['id_novedad'] ?? 0);
         $solucion = trim($_POST['solucion'] ?? '');
@@ -103,7 +155,7 @@ class NovedadesController
 
             // Buscar activos asignados
             $stmt2 = $db->prepare(
-                "SELECT a.id_activo, t.nom_tipo, ma.nom_marca, mo.nom_modelo, a.serial, a.codigo_qr, a.referencia
+                "SELECT a.id_activo, t.nom_tipo, ma.nom_marca, mo.nom_modelo, a.serial, a.codigo_qr, a.referencia, a.id_padre_activo
                  FROM tab_activotec a
                  LEFT JOIN tab_tipos  t  ON a.id_tipoequi = t.id_tipoequi
                  LEFT JOIN tab_marca  ma ON a.id_marca    = ma.id_marca
@@ -116,12 +168,13 @@ class NovedadesController
 
             $activos = array_map(function($a) {
                 return [
-                    'id'     => $a['id_activo'],
-                    'tipo'   => $a['nom_tipo']   ?? 'Equipo',
-                    'marca'  => $a['nom_marca']  ?? '',
-                    'modelo' => $a['nom_modelo'] ?? '',
-                    'serial' => $a['serial']     ?? 'S/N',
-                    'foto_qr'=> rtrim(APP_URL, '/') . '/controllers/qrController.php?codigo=' . urlencode($a['codigo_qr']),
+                    'id'           => $a['id_activo'],
+                    'tipo'         => $a['nom_tipo']       ?? 'Equipo',
+                    'marca'        => $a['nom_marca']      ?? '',
+                    'modelo'       => $a['nom_modelo']     ?? '',
+                    'serial'       => $a['serial']         ?? 'S/N',
+                    'foto_qr'      => rtrim(APP_URL, '/') . '/controllers/qrController.php?codigo=' . urlencode($a['codigo_qr']),
+                    'es_periferico'=> !empty($a['id_padre_activo']), // true si tiene activo padre
                 ];
             }, $activos_raw);
 
@@ -195,6 +248,15 @@ class NovedadesController
                 ':foto' => $foto_url,
             ]);
             $id_ticket = $ins->fetchColumn();
+
+            // ── Si es daño físico → marcar activo como Averiado (Malo) ───────
+            $tiposDanoFisico = ['Daño Físico', 'Pérdida'];
+            if (in_array($tipo_dano, $tiposDanoFisico)) {
+                $stmtAveria = $db->prepare(
+                    "UPDATE tab_activotec SET estado = 'Malo' WHERE id_activo = :id AND activo = TRUE"
+                );
+                $stmtAveria->execute([':id' => $id_activo]);
+            }
 
             // ── Enviar notificación por correo ────────────────────────────────
             MailService::notificarNuevaNovedad([

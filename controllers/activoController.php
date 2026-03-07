@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/database.php';
+require_once __DIR__ . '/../core/HistorialHelper.php';
 
 $libreria = __DIR__ . '/../vendor/SimpleXLSX.php';
 if (file_exists($libreria)) {
@@ -20,9 +21,9 @@ class ActivoController {
         return [
             'tipos'   => $db->query("SELECT id_tipoequi, nom_tipo FROM tab_tipos ORDER BY nom_tipo")->fetchAll(),
             'marcas'  => $db->query("SELECT id_marca, nom_marca FROM tab_marca ORDER BY nom_marca")->fetchAll(),
-            'modelos' => $db->query("SELECT id_modelo, nom_modelo, id_tipoequi FROM tab_modelo")->fetchAll(),
+            'modelos' => $db->query("SELECT id_modelo, nom_modelo, id_tipoequi, id_marca FROM tab_modelo")->fetchAll(),
             'areas'   => $db->query("SELECT id_area, nom_area FROM tab_area ORDER BY nom_area")->fetchAll(),
-            'padres'  => $db->query("SELECT id_activo, serial, referencia FROM tab_activotec WHERE id_padre_activo IS NULL")->fetchAll()
+            'padres'  => $db->query("SELECT id_activo, serial, COALESCE(hostname, serial, 'Sin identificador') AS hostname, referencia FROM tab_activotec WHERE id_padre_activo IS NULL")->fetchAll()
         ];
     }
 
@@ -527,7 +528,7 @@ class ActivoController {
                         ':qr'    => $qr_acc,
                         ':ref'   => !empty($acc['referencia']) ? $acc['referencia'] : (isset($acc['tipo_nombre']) ? $acc['tipo_nombre'] : 'Accesorio'),
                         ':tipo'  => $acc['tipo_id'],
-                        ':marca' => $postData['id_marca'],
+                        ':marca' => !empty($acc['marca_id']) ? $acc['marca_id'] : $postData['id_marca'],
                         ':est'   => 'Bueno',
                         ':resp'  => $cod,
                         ':padre' => $id_padre_nuevo,
@@ -541,6 +542,12 @@ class ActivoController {
             }
 
             $db->commit();
+
+            // ── Registrar historial con snapshot ─────────────────────────────
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $usuario = $_SESSION['username'] ?? $_SESSION['user_id'] ?? 'sistema';
+            HistorialHelper::registrar($db, $id_padre_nuevo, HistorialHelper::CREACION, $usuario);
+
             header("Location: ../public/activos.php?msg=Activo registrado correctamente&tipo=success");
 
         } catch (Exception $e) {
@@ -569,6 +576,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         exit();
     } else {
+        // Formulario HTML — verificar CSRF
+        require_once __DIR__ . '/../core/Csrf.php';
+        Csrf::verify('../public/crear_activo.php');
         ActivoController::store($_POST);
     }
 }

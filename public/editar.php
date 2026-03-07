@@ -1,5 +1,6 @@
 <?php
 require_once '../controllers/activoEditarController.php';
+require_once '../core/Csrf.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 $id               = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $data             = ActivoEditarController::getFormData($id);
@@ -28,7 +29,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Activo #<?= $a['r_id'] ?> | SIH_QR</title>
+    <title>Editar Elemento Tecnológico #<?= $a['r_id'] ?> | SIH_QR</title>
         <!-- Dark mode: aplicar clase antes del render para evitar flash -->
     <script>
         (function(){
@@ -89,6 +90,7 @@ try {
                   class="max-w-6xl mx-auto space-y-8">
 
                 <!-- Campo oculto: ID del activo -->
+                <?= Csrf::field() ?>
                 <input type="hidden" name="id_activo"  value="<?= $a['r_id'] ?>">
                 <input type="hidden" name="codigo_qr"  value="<?= htmlspecialchars($a['r_qr'] ?? '') ?>">
 
@@ -129,7 +131,7 @@ try {
                                             <?php foreach ($data['tipos'] as $t): ?>
                                             <option value="<?= $t['id_tipoequi'] ?>"
                                                     data-nombre="<?= htmlspecialchars($t['nom_tipo']) ?>"
-                                                    <?= ($t['nom_tipo'] === $a['r_tipo']) ? 'selected' : '' ?>>
+                                                    <?= ($t['id_tipoequi'] == $a['r_id_tipo']) ? 'selected' : '' ?>>
                                                 <?= htmlspecialchars($t['nom_tipo']) ?>
                                             </option>
                                             <?php endforeach; ?>
@@ -144,7 +146,7 @@ try {
                                             <option value="">Seleccione...</option>
                                             <?php foreach ($data['marcas'] as $m): ?>
                                             <option value="<?= $m['id_marca'] ?>"
-                                                    <?= ($m['nom_marca'] === $a['r_marca']) ? 'selected' : '' ?>>
+                                                    <?= ($m['id_marca'] == $a['r_id_marca']) ? 'selected' : '' ?>>
                                                 <?= htmlspecialchars($m['nom_marca']) ?>
                                             </option>
                                             <?php endforeach; ?>
@@ -152,7 +154,7 @@ try {
                                     </div>
                                 </div>
 
-                                <div id="col-modelo">
+                                <div id="col-modelo" style="display:none;">
                                     <label class="label-ruby">Modelo</label>
                                     <div class="input-group-ruby">
                                         <select class="input-ruby cursor-pointer" name="id_modelo" id="selector-modelo">
@@ -160,7 +162,8 @@ try {
                                             <?php foreach ($data['modelos'] as $mod): ?>
                                             <option value="<?= $mod['id_modelo'] ?>"
                                                     data-tipo="<?= $mod['id_tipoequi'] ?>"
-                                                    <?= ($mod['nom_modelo'] === $a['r_modelo']) ? 'selected' : '' ?>>
+                                                    data-marca="<?= $mod['id_marca'] ?>"
+                                                    <?= ($mod['id_modelo'] == $a['r_id_modelo']) ? 'selected' : '' ?>>
                                                 <?= htmlspecialchars($mod['nom_modelo']) ?>
                                             </option>
                                             <?php endforeach; ?>
@@ -355,28 +358,55 @@ try {
                         <!-- Equipo Padre (para periféricos) -->
                         <div id="grupo-padre" class="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl border-2 border-slate-800">
                             <label class="label-ruby !text-brand-500">Equipo Principal (Padre)</label>
-                            <select name="id_padre_activo"
-                                    class="w-full bg-white/5 border-2 border-white/10 rounded-xl py-3 px-4 text-xs font-bold outline-none">
-                                <option value="">No, es equipo principal</option>
-                                <?php foreach ($data['padres'] as $p): ?>
-                                <?php if ($p['id_activo'] === $a['r_id']) continue; // No listarse a sí mismo ?>
-                                <option value="<?= $p['id_activo'] ?>"
-                                        class="text-slate-800"
-                                        <?= ($p['id_activo'] === $a['r_id_padre']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($p['serial'] ?? 'S/N') ?>
-                                    (<?= htmlspecialchars($p['referencia'] ?? '—') ?>)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <!-- Buscador -->
+                            <div class="relative mb-3">
+                                <div class="flex items-center bg-white/5 border-2 border-white/10 rounded-xl px-3 py-2 gap-2 focus-within:border-brand-600 transition-colors">
+                                    <i class="fas fa-search text-slate-500 text-xs"></i>
+                                    <input type="text" id="buscarPadre" placeholder="Buscar por hostname o referencia..."
+                                           class="bg-transparent outline-none text-xs font-bold text-white placeholder-slate-500 w-full"
+                                           oninput="filtrarPadres(this.value)">
+                                    <button type="button" onclick="limpiarPadre()" class="text-slate-500 hover:text-brand-400 text-xs" title="Quitar selección">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <!-- Dropdown resultados -->
+                                <div id="dropdownPadre" class="hidden absolute z-50 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+                                    <div id="listaPadre"></div>
+                                </div>
+                            </div>
+                            <!-- Chip del equipo seleccionado -->
+                            <div id="chipPadre" class="<?= $a['r_id_padre'] ? 'flex' : 'hidden' ?> items-center gap-2 bg-brand-600/20 border border-brand-600/40 rounded-lg px-3 py-2 mt-1">
+                                <i class="fas fa-desktop text-brand-400 text-xs"></i>
+                                <span id="chipPadreTexto" class="text-xs font-black text-brand-300 truncate flex-1">
+                                    <?php
+                                        if ($a['r_id_padre']) {
+                                            foreach ($data['padres'] as $p) {
+                                                if ($p['id_activo'] === $a['r_id_padre']) {
+                                                    echo htmlspecialchars($p['hostname'] . ($p['referencia'] ? ' — ' . $p['referencia'] : ''));
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    ?>
+                                </span>
+                                <button type="button" onclick="limpiarPadre()" class="text-brand-400 hover:text-white text-xs"><i class="fas fa-times"></i></button>
+                            </div>
+                            <p id="sinPadreTexto" class="text-[10px] text-slate-500 font-bold mt-2 <?= $a['r_id_padre'] ? 'hidden' : '' ?>">Sin equipo principal asignado</p>
+                            <!-- Hidden real que va al controller -->
+                            <input type="hidden" name="id_padre_activo" id="id_padre_activo_hidden" value="<?= (int)($a['r_id_padre'] ?? 0) ?: '' ?>">
+                            <!-- Datos de padres en JSON para búsqueda client-side (excluye el activo actual) -->
+                            <script>
+                                const PADRES_DATA = <?= json_encode(array_values(array_filter($data['padres'], fn($p) => $p['id_activo'] !== $a['r_id']))) ?>;
+                            </script>
                         </div>
 
                         <!-- Estado -->
                         <div class="bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm">
-                            <label class="label-ruby">Estado del Activo</label>
+                            <label class="label-ruby">Estado del Elemento Tecnológico</label>
                             <div class="input-group-ruby">
                                 <select name="estado" class="input-ruby">
                                     <option value="Bueno"      <?= ($a['r_estado'] === 'Bueno')      ? 'selected' : '' ?>>Bueno</option>
-                                    <option value="Malo"       <?= ($a['r_estado'] === 'Malo')       ? 'selected' : '' ?>>Malo</option>
+                                    <option value="Malo"       <?= ($a['r_estado'] === 'Malo')       ? 'selected' : '' ?>>Averiado</option>
                                     <option value="Reparacion" <?= ($a['r_estado'] === 'Reparacion') ? 'selected' : '' ?>>En Reparación</option>
                                 </select>
                             </div>
@@ -402,7 +432,7 @@ try {
                                 <input type="password" name="password_activo" id="input-password"
                                        class="input-ruby font-mono"
                                        placeholder="Contraseña actual o nueva..."
-                                       value="<?= htmlspecialchars($a['r_password'] ?? '') ?>">
+                                       value="<?= htmlspecialchars($a['r_password_activo'] ?? '') ?>">
                             </div>
                             <p class="text-[10px] text-slate-400 mt-1.5">
                                 <i class="fas fa-info-circle mr-1"></i>
@@ -455,6 +485,33 @@ try {
 
     <script src="../assets/js/sidebar_logic.js"></script>
     <script>
+        // ── Filtrar modelos por tipo + marca (idéntico a crear_activo) ────────
+        function filtrarModelos() {
+            const idTipo  = document.getElementById('selectTipo').value;
+            const idMarca = document.getElementById('selectMarca').value;
+            const sel     = document.getElementById('selector-modelo');
+
+            let visibles = 0;
+            for (const opt of sel.options) {
+                if (opt.value === '') { opt.style.display = ''; continue; }
+                const matchTipo  = !idTipo  || String(opt.dataset.tipo)  === String(idTipo);
+                const matchMarca = !idMarca || String(opt.dataset.marca) === String(idMarca);
+                const visible    = matchTipo && matchMarca;
+                opt.style.display = visible ? '' : 'none';
+                if (visible) visibles++;
+            }
+
+            // Si el modelo seleccionado quedó oculto, resetear a genérico
+            const selOpt = sel.options[sel.selectedIndex];
+            if (selOpt && selOpt.style.display === 'none') sel.value = '';
+
+            // Mostrar col-modelo si hay modelos para esa combinación O si ya tiene uno asignado
+            const tieneModelo = sel.value !== '';
+            document.getElementById('col-modelo').style.display     = (visibles > 0 || tieneModelo) ? 'block' : 'none';
+            // Referencia: visible solo cuando no hay modelos disponibles (periféricos/accesorios)
+            document.getElementById('col-referencia').style.display = (visibles > 0) ? 'none' : '';
+        }
+
         // ── Mostrar/ocultar sección de redes y padre según tipo ──────────────
         function toggleCampos() {
             const select     = document.getElementById('selectTipo');
@@ -462,9 +519,66 @@ try {
             const esPC       = ['TABLET','COMPUTADOR','PORTATIL','PC','SERVIDOR','AIO'].some(t => nombreTipo.includes(t));
             document.getElementById('grupo-redes').style.display = esPC ? 'block' : 'none';
             document.getElementById('grupo-padre').style.display = esPC ? 'none'  : 'block';
+            filtrarModelos();
         }
 
-        // ── Buscar empleado por cédula (igual que en crear_activo) ───────────
+        // ── Buscador de equipo padre (idéntico a crear_activo) ───────────────
+        function filtrarPadres(q) {
+            const dropdown = document.getElementById('dropdownPadre');
+            const lista    = document.getElementById('listaPadre');
+            const texto    = q.trim().toLowerCase();
+
+            if (!texto) { dropdown.classList.add('hidden'); return; }
+
+            const coincidencias = PADRES_DATA.filter(p => {
+                const h = (p.hostname   || '').toLowerCase();
+                const r = (p.referencia || '').toLowerCase();
+                return h.includes(texto) || r.includes(texto);
+            }).slice(0, 8);
+
+            if (!coincidencias.length) {
+                lista.innerHTML = `<p class="text-[10px] text-slate-500 px-4 py-3 font-bold">Sin resultados</p>`;
+            } else {
+                lista.innerHTML = coincidencias.map(p => {
+                    const label = p.hostname + (p.referencia ? ` — ${p.referencia}` : '');
+                    return `<button type="button"
+                        class="w-full text-left px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                        onclick="seleccionarPadre(${p.id_activo}, '${label.replace(/'/g,"\\'")}')">
+                        <i class="fas fa-desktop text-brand-400 text-xs"></i>
+                        <span>${label}</span>
+                    </button>`;
+                }).join('');
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        function seleccionarPadre(id, label) {
+            document.getElementById('id_padre_activo_hidden').value = id;
+            document.getElementById('buscarPadre').value            = '';
+            document.getElementById('dropdownPadre').classList.add('hidden');
+            document.getElementById('chipPadreTexto').textContent   = label;
+            document.getElementById('chipPadre').classList.remove('hidden');
+            document.getElementById('chipPadre').classList.add('flex');
+            document.getElementById('sinPadreTexto').classList.add('hidden');
+        }
+
+        function limpiarPadre() {
+            document.getElementById('id_padre_activo_hidden').value = '';
+            document.getElementById('buscarPadre').value            = '';
+            document.getElementById('dropdownPadre').classList.add('hidden');
+            document.getElementById('chipPadre').classList.add('hidden');
+            document.getElementById('chipPadre').classList.remove('flex');
+            document.getElementById('sinPadreTexto').classList.remove('hidden');
+        }
+
+        // Cerrar dropdown al hacer clic fuera
+        document.addEventListener('click', e => {
+            if (!e.target.closest('#grupo-padre')) {
+                document.getElementById('dropdownPadre')?.classList.add('hidden');
+            }
+        });
+
+        // ── Buscar empleado por cédula ────────────────────────────────────────
         async function buscarEmpleado() {
             const id = document.getElementById('input-responsable').value.trim();
             if (!id) return;
@@ -482,14 +596,13 @@ try {
                 } else {
                     document.getElementById('nom_nuevo_empleado').value    = '';
                     document.getElementById('nom_nuevo_empleado').readOnly = false;
-                    alerta.innerHTML   = 'Custodio nuevo — complete el nombre y área';
+                    alerta.innerHTML   = 'Usuario nuevo — complete el nombre y área';
                     alerta.classList.remove('hidden');
                 }
             } finally {
                 document.getElementById('icon-search').className = 'fas fa-search';
             }
         }
-
 
         // ── Recolectar campos dinámicos antes de guardar ─────────────────────
         function recolectarCamposDinamicos() {
@@ -538,6 +651,9 @@ try {
                 setTimeout(() => toast.classList.add('translate-y-24', 'opacity-0'), 6000);
                 window.history.replaceState({}, document.title, window.location.pathname + '?id=<?= $a['r_id'] ?>');
             }
+
+            // Listener de marca para re-filtrar modelos
+            document.getElementById('selectMarca').addEventListener('change', filtrarModelos);
 
             // Inicializar estado del formulario según el tipo actual
             toggleCampos();

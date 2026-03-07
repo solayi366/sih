@@ -1,6 +1,8 @@
 <?php
 require_once '../controllers/parametrosController.php';
-$data = ParametrosController::getRRHHData();
+require_once '../core/Csrf.php';
+$data  = ParametrosController::getRRHHData();
+$areas = $data['areas'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -38,26 +40,33 @@ $data = ParametrosController::getRRHHData();
                     </button>
                 </div>
 
+                <!-- Buscador -->
+                <div class="mb-4">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="buscadorAreas" placeholder="Buscar área..."
+                               class="w-full pl-9 pr-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-semibold focus:border-brand-600 outline-none transition-all bg-white">
+                    </div>
+                </div>
+
                 <!-- Contador -->
-                <p class="text-xs font-bold text-slate-400 mb-3"><?= count($data['areas']) ?> área<?= count($data['areas'])!=1?'s':'' ?> registrada<?= count($data['areas'])!=1?'s':'' ?></p>
+                <p class="text-xs font-bold text-slate-400 mb-3" id="contadorAreas"></p>
 
                 <!-- Lista -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
-                    <!-- Cabecera (solo md+) -->
                     <div class="hidden md:grid grid-cols-[60px_1fr_120px] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         <span># ID</span>
                         <span>Nombre de la Unidad</span>
                         <span class="text-right">Acción</span>
                     </div>
 
-                    <div class="divide-y divide-slate-100">
-                        <?php foreach ($data['areas'] as $a): ?>
-                        <div class="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors group">
-                            <!-- ID (solo md+) -->
+                    <div id="listaAreas" class="divide-y divide-slate-100">
+                        <?php foreach ($areas as $a): ?>
+                        <div class="fila-area flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors group"
+                             data-nombre="<?= strtolower(htmlspecialchars($a['r_nombre'])) ?>">
+
                             <span class="hidden md:block font-mono text-[10px] text-brand-600 w-12 shrink-0">#<?= str_pad($a['r_id'],3,'0',STR_PAD_LEFT) ?></span>
 
-                            <!-- Icono + Nombre -->
                             <div class="flex items-center gap-3 flex-1 min-w-0">
                                 <div class="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
                                     <i class="fas fa-building text-brand-600 text-xs"></i>
@@ -68,7 +77,6 @@ $data = ParametrosController::getRRHHData();
                                 </div>
                             </div>
 
-                            <!-- Acciones -->
                             <div class="flex items-center gap-1 shrink-0">
                                 <button onclick="abrirEdicion(<?= $a['r_id'] ?>, '<?= addslashes($a['r_nombre']) ?>')"
                                         class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-all">
@@ -81,14 +89,19 @@ $data = ParametrosController::getRRHHData();
                             </div>
                         </div>
                         <?php endforeach; ?>
-
-                        <?php if (empty($data['areas'])): ?>
-                        <div class="py-16 text-center text-slate-400">
-                            <i class="fas fa-building text-3xl mb-3 opacity-30"></i>
-                            <p class="text-sm font-bold">No hay áreas registradas</p>
-                        </div>
-                        <?php endif; ?>
                     </div>
+
+                    <div id="sinResultadosArea" class="hidden py-16 text-center text-slate-400">
+                        <i class="fas fa-search text-3xl mb-3 opacity-30"></i>
+                        <p class="text-sm font-bold">Sin resultados para tu búsqueda</p>
+                    </div>
+
+                    <?php if (empty($areas)): ?>
+                    <div class="py-16 text-center text-slate-400">
+                        <i class="fas fa-building text-3xl mb-3 opacity-30"></i>
+                        <p class="text-sm font-bold">No hay áreas registradas</p>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -103,6 +116,7 @@ $data = ParametrosController::getRRHHData();
                 <button onclick="cerrarModal('modalCrear')" class="text-white/50 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"><i class="fas fa-times text-sm"></i></button>
             </div>
             <form action="../controllers/parametrosController.php?ent=area&action=create" method="POST">
+                    <?= Csrf::field() ?>
                 <div class="p-5">
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nombre del Área</label>
                     <input type="text" name="nom_area" placeholder="Ej: Tecnología e Información..." required
@@ -124,6 +138,7 @@ $data = ParametrosController::getRRHHData();
                 <button onclick="cerrarModal('modalEdicion')" class="text-white/50 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"><i class="fas fa-times text-sm"></i></button>
             </div>
             <form action="../controllers/parametrosController.php?ent=area&action=update" method="POST">
+                    <?= Csrf::field() ?>
                 <input type="hidden" name="id_area" id="edit_id">
                 <div class="p-5">
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nombre del Área</label>
@@ -141,6 +156,29 @@ $data = ParametrosController::getRRHHData();
     <script src="../assets/js/sidebar_logic.js"></script>
     <script src="../assets/js/alerts.js"></script>
     <script src="../assets/js/utils.js"></script>
+    <script>
+        const todasFilasArea = Array.from(document.querySelectorAll('.fila-area'));
+        let filasFiltradasArea = [...todasFilasArea];
+
+        function filtrarAreas() {
+            const q = document.getElementById('buscadorAreas').value.toLowerCase().trim();
+            filasFiltradasArea = todasFilasArea.filter(f => !q || f.dataset.nombre.includes(q));
+            renderAreas();
+        }
+
+        function renderAreas() {
+            const total = filasFiltradasArea.length;
+            todasFilasArea.forEach(f => f.style.display = 'none');
+            filasFiltradasArea.forEach(f => f.style.display = '');
+            document.getElementById('sinResultadosArea').classList.toggle('hidden', total > 0);
+            document.getElementById('contadorAreas').textContent =
+                total === 0 ? 'Sin resultados'
+                : `${total} área${total !== 1 ? 's' : ''} registrada${total !== 1 ? 's' : ''}`;
+        }
+
+        document.getElementById('buscadorAreas').addEventListener('input', filtrarAreas);
+        renderAreas();
+    </script>
     <script src="../assets/js/dark_mode.js"></script>
 </body>
 </html>

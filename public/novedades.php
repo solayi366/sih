@@ -1,5 +1,6 @@
 <?php
 require_once '../controllers/novedadesController.php';
+require_once '../core/Csrf.php';
 require_once '../config/config.php';
 $res        = NovedadesController::listar();
 $tickets    = $res['tickets'];
@@ -68,6 +69,65 @@ $total      = $res['total'];
                     </a>
                 </div>
 
+                <!-- FILTROS -->
+                <?php
+                $filtroTipo   = $_GET['tipo']   ?? '';
+                $filtroEstado = $_GET['estado'] ?? '';
+
+                $buildUrl = function(string $tipo, string $estado): string {
+                    $q = [];
+                    if ($tipo   !== '') $q[] = 'tipo='   . urlencode($tipo);
+                    if ($estado !== '') $q[] = 'estado=' . urlencode($estado);
+                    return '?' . implode('&', $q);
+                };
+
+                $tiposFiltro = [
+                    ''                         => ['label' => 'Todos los tipos',        'icon' => 'fa-list',        'color' => 'bg-slate-800 text-white'],
+                    'Daño Físico'              => ['label' => 'Daño Físico',            'icon' => 'fa-hammer',      'color' => 'bg-red-100 text-red-700'],
+                    'Pérdida'                  => ['label' => 'Pérdida',                'icon' => 'fa-search',      'color' => 'bg-orange-100 text-orange-700'],
+                    'Actualización'            => ['label' => 'Actualización',          'icon' => 'fa-arrow-up',    'color' => 'bg-blue-100 text-blue-700'],
+                    'Mantenimiento Preventivo' => ['label' => 'Mantenimiento',          'icon' => 'fa-wrench',      'color' => 'bg-violet-100 text-violet-700'],
+                    'Falla de Software'        => ['label' => 'Falla Software',         'icon' => 'fa-laptop-code', 'color' => 'bg-amber-100 text-amber-700'],
+                ];
+                $estadosFiltro = [
+                    ''         => ['label' => 'Todos',    'icon' => 'fa-circle-half-stroke', 'color' => 'bg-slate-800 text-white'],
+                    'ABIERTO'  => ['label' => 'Abiertos', 'icon' => 'fa-circle-dot',         'color' => 'bg-amber-100 text-amber-700'],
+                    'RESUELTO' => ['label' => 'Resueltos','icon' => 'fa-circle-check',        'color' => 'bg-emerald-100 text-emerald-700'],
+                ];
+                ?>
+
+                <!-- Fila de filtros: tipo + estado -->
+                <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                    <!-- Tipo de novedad -->
+                    <div class="flex flex-wrap gap-2">
+                        <?php foreach ($tiposFiltro as $val => $info): ?>
+                        <?php $isActive = ($filtroTipo === $val); ?>
+                        <a href="<?= $buildUrl($val, $filtroEstado) ?>"
+                           class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border
+                                  <?= $isActive ? $info['color'] . ' border-transparent shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400' ?>">
+                            <i class="fas <?= $info['icon'] ?> text-[9px]"></i>
+                            <?= $info['label'] ?>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- Separador visual -->
+                    <div class="hidden sm:block w-px bg-slate-200 self-stretch mx-1"></div>
+
+                    <!-- Estado del ticket -->
+                    <div class="flex gap-2">
+                        <?php foreach ($estadosFiltro as $val => $info): ?>
+                        <?php $isActive = ($filtroEstado === $val); ?>
+                        <a href="<?= $buildUrl($filtroTipo, $val) ?>"
+                           class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border
+                                  <?= $isActive ? $info['color'] . ' border-transparent shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400' ?>">
+                            <i class="fas <?= $info['icon'] ?> text-[9px]"></i>
+                            <?= $info['label'] ?>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
                 <?php if (!empty($res['error'])): ?>
                 <div class="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 mb-6 text-sm font-bold">
                     <i class="fas fa-exclamation-triangle mr-2"></i><?= htmlspecialchars($res['error']) ?>
@@ -83,7 +143,7 @@ $total      = $res['total'];
                                 <tr>
                                     <th class="p-5">Ticket / Fecha</th>
                                     <th class="p-5">Reportante</th>
-                                    <th class="p-5">Activo Afectado</th>
+                                    <th class="p-5">Elemento Tecnológico Afectado</th>
                                     <th class="p-5">Detalle</th>
                                     <th class="p-5 text-center">Evidencia</th>
                                     <th class="p-5 text-right">Acción</th>
@@ -140,8 +200,27 @@ $total      = $res['total'];
 
                                     <!-- Detalle -->
                                     <td class="p-5 align-top max-w-xs">
-                                        <span class="inline-block px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-[9px] font-black uppercase mb-2 border border-slate-200">
-                                            <?= htmlspecialchars($t['r_tipo_dano'] ?? '') ?>
+                                        <?php
+                                        $tipo = $t['r_tipo_dano'] ?? '';
+                                        $badgeTipo = match($tipo) {
+                                            'Daño Físico'              => 'bg-red-50 text-red-600 border-red-200',
+                                            'Pérdida'                  => 'bg-orange-50 text-orange-600 border-orange-200',
+                                            'Actualización'            => 'bg-blue-50 text-blue-600 border-blue-200',
+                                            'Mantenimiento Preventivo' => 'bg-violet-50 text-violet-600 border-violet-200',
+                                            'Falla de Software'        => 'bg-amber-50 text-amber-600 border-amber-200',
+                                            default                    => 'bg-slate-100 text-slate-600 border-slate-200',
+                                        };
+                                        $iconoTipo = match($tipo) {
+                                            'Daño Físico'              => '🔨',
+                                            'Pérdida'                  => '🔍',
+                                            'Actualización'            => '⬆️',
+                                            'Mantenimiento Preventivo' => '🔧',
+                                            'Falla de Software'        => '💻',
+                                            default                    => '📋',
+                                        };
+                                        ?>
+                                        <span class="inline-block px-2 py-1 rounded-md text-[9px] font-black uppercase mb-2 border <?= $badgeTipo ?>">
+                                            <?= $iconoTipo ?> <?= htmlspecialchars($tipo) ?>
                                         </span>
                                         <p class="text-sm text-slate-600 leading-snug font-medium">
                                             <?= nl2br(htmlspecialchars(substr($t['r_descripcion'] ?? '', 0, 120))) ?>
@@ -186,16 +265,22 @@ $total      = $res['total'];
 
                     <!-- PAGINACIÓN -->
                     <?php if ($total_pages > 1): ?>
+                    <?php
+                    $paginParams = [];
+                    if (!empty($_GET['tipo']))   $paginParams[] = 'tipo='   . urlencode($_GET['tipo']);
+                    if (!empty($_GET['estado'])) $paginParams[] = 'estado=' . urlencode($_GET['estado']);
+                    $paginExtra = count($paginParams) ? '&' . implode('&', $paginParams) : '';
+                    ?>
                     <div class="flex items-center justify-between px-6 py-4 border-t border-slate-100">
                         <span class="text-xs text-slate-400 font-bold">Página <?= $page ?> de <?= $total_pages ?></span>
                         <div class="flex gap-2">
                             <?php if ($page > 1): ?>
-                            <a href="?page=<?= $page - 1 ?>" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all">
+                            <a href="?page=<?= $page - 1 ?><?= $paginExtra ?>" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all">
                                 <i class="fas fa-chevron-left"></i>
                             </a>
                             <?php endif; ?>
                             <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?= $page + 1 ?>" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all">
+                            <a href="?page=<?= $page + 1 ?><?= $paginExtra ?>" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all">
                                 <i class="fas fa-chevron-right"></i>
                             </a>
                             <?php endif; ?>
@@ -226,6 +311,7 @@ $total      = $res['total'];
             <p class="text-sm text-slate-500 mb-6 font-medium" id="lblDetalle"></p>
 
             <form method="POST" action="../controllers/resolver_novedad.php">
+                        <?= Csrf::field() ?>
                 <input type="hidden" name="id_novedad" id="formIdNovedad">
 
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Solución aplicada / Comentarios</label>

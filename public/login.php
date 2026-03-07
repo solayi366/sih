@@ -45,12 +45,12 @@
         .dark .glass-card .text-slate-900 { color: #f1f5f9 !important; }
         .dark .glass-card .text-slate-400 { color: #64748b !important; }
         .dark .glass-card input {
-            background: #273549 !important;
-            border-color: #334155 !important;
+            background: rgba(22,18,34,0.85) !important;
+            border-color: rgba(255,255,255,0.07) !important;
             color: #f1f5f9 !important;
         }
         .dark .glass-card input::placeholder { color: #475569 !important; }
-        .dark .glass-card .border-slate-200 { border-color: #334155 !important; }
+        .dark .glass-card .border-slate-200 { border-color: rgba(255,255,255,0.07) !important; }
         .dark .glass-card .text-slate-500 { color: #64748b !important; }
         .dark .glass-card .bg-rose-50 { background: rgba(225,29,72,0.1) !important; }
     </style>

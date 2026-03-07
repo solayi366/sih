@@ -1,5 +1,6 @@
 <?php
 require_once '../controllers/activoController.php';
+require_once '../core/Csrf.php';
 $data = ActivoController::getFormData();
 ?>
 <!DOCTYPE html>
@@ -7,7 +8,7 @@ $data = ActivoController::getFormData();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Activo | SIH_QR</title>
+    <title>Nuevo Elemento Tecnológico | SIH_QR</title>
         <!-- Dark mode: aplicar clase antes del render para evitar flash -->
     <script>
         (function(){
@@ -52,6 +53,24 @@ $data = ActivoController::getFormData();
         }
         .input-ruby { flex: 1; padding: 0.625rem 1rem; font-size: 0.875rem; font-weight: 700; outline: none; }
         .label-ruby { font-size: 0.6875rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
+
+        /* Inputs dentro de la tabla de accesorios — adaptativos claro/oscuro */
+        .acc-input {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #fff;
+        }
+        .acc-input::placeholder { color: rgba(255,255,255,0.3); }
+        .acc-input option { background: rgba(16,14,24,0.90); color: #fff; }
+
+        /* En modo claro (sin clase dark en <html>) */
+        html:not(.dark) .acc-input {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: rgba(16,14,24,0.90);
+        }
+        html:not(.dark) .acc-input::placeholder { color: #94a3b8; }
+        html:not(.dark) .acc-input option { background: #fff; color: rgba(16,14,24,0.90); }
     </style>
     <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
@@ -64,11 +83,12 @@ $data = ActivoController::getFormData();
         <div class="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth w-full">
             
             <form action="../controllers/activoController.php" method="POST" id="formCrear" class="max-w-6xl mx-auto space-y-8">
+                <?= Csrf::field() ?>
                 
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
                     <div class="flex items-center gap-4">
                         <div class="w-2 h-10 bg-brand-600 rounded-full shadow-[0_0_10px_#e11d48]"></div>
-                        <h1 class="text-2xl font-black text-slate-900 tracking-tighter uppercase">Registrar <span class="text-brand-600">Nuevo Activo</span></h1>
+                        <h1 class="text-2xl font-black text-slate-900 tracking-tighter uppercase">Registrar <span class="text-brand-600">Nuevo Elemento Tecnológico</span></h1>
                     </div>
                     <button type="button" class="px-5 py-2.5 bg-white border-2 border-slate-200 text-brand-600 rounded-xl font-black text-xs hover:border-brand-600 transition-all flex items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalCargaExcel">
                         <i class="fas fa-file-excel"></i> IMPORTAR HOJA DE VIDA
@@ -102,7 +122,7 @@ $data = ActivoController::getFormData();
                                         </select>
                                     </div>
                                 </div>
-                                <div id="col-modelo" style="display:none;"><label class="label-ruby">Modelo</label><div class="input-group-ruby"><select class="input-ruby cursor-pointer" name="id_modelo" id="selector-modelo"><option value="">(Genérico)</option><?php foreach ($data['modelos'] as $mod): ?><option value="<?= $mod['id_modelo'] ?>" data-tipo="<?= $mod['id_tipoequi'] ?>"><?= $mod['nom_modelo'] ?></option><?php endforeach; ?></select></div></div>
+                                <div id="col-modelo" style="display:none;"><label class="label-ruby">Modelo</label><div class="input-group-ruby"><select class="input-ruby cursor-pointer" name="id_modelo" id="selector-modelo"><option value="">(Genérico)</option><?php foreach ($data['modelos'] as $mod): ?><option value="<?= $mod['id_modelo'] ?>" data-tipo="<?= $mod['id_tipoequi'] ?>" data-marca="<?= $mod['id_marca'] ?>"><?= htmlspecialchars($mod['nom_modelo']) ?></option><?php endforeach; ?></select></div></div>
                                 <!-- col-referencia y col-serial ahora son dinámicos -->
                             </div>
                         </div>
@@ -152,6 +172,7 @@ $data = ActivoController::getFormData();
                                     <thead class="border-b border-white/10">
                                         <tr class="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                             <th class="pb-4 px-2">Tipo</th>
+                                            <th class="pb-4 px-2">Marca</th>
                                             <th class="pb-4 px-2">Serial / Ref</th>
                                             <th class="pb-4 text-right">Acción</th>
                                         </tr>
@@ -184,16 +205,41 @@ $data = ActivoController::getFormData();
 
                         <div id="grupo-padre" class="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl border-2 border-slate-800">
                             <label class="label-ruby !text-brand-500">Equipo Principal (Padre)</label>
-                            <select name="id_padre_activo" class="w-full bg-white/5 border-2 border-white/10 rounded-xl py-3 px-4 text-xs font-bold outline-none">
-                                <option value="">No, es equipo principal</option>
-                                <?php foreach ($data['padres'] as $p): ?><option value="<?= $p['id_activo'] ?>" class="text-slate-800"><?= $p['serial'] ?> (<?= $p['referencia'] ?>)</option><?php endforeach; ?>
-                            </select>
+                            <!-- Buscador -->
+                            <div class="relative mb-3">
+                                <div class="flex items-center bg-white/5 border-2 border-white/10 rounded-xl px-3 py-2 gap-2 focus-within:border-brand-600 transition-colors">
+                                    <i class="fas fa-search text-slate-500 text-xs"></i>
+                                    <input type="text" id="buscarPadre" placeholder="Buscar por hostname o referencia..."
+                                           class="bg-transparent outline-none text-xs font-bold text-white placeholder-slate-500 w-full"
+                                           oninput="filtrarPadres(this.value)">
+                                    <button type="button" onclick="limpiarPadre()" class="text-slate-500 hover:text-brand-400 text-xs" title="Quitar selección">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <!-- Dropdown resultados -->
+                                <div id="dropdownPadre" class="hidden absolute z-50 w-full mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+                                    <div id="listaPadre"></div>
+                                </div>
+                            </div>
+                            <!-- Chip del equipo seleccionado -->
+                            <div id="chipPadre" class="hidden items-center gap-2 bg-brand-600/20 border border-brand-600/40 rounded-lg px-3 py-2 mt-1">
+                                <i class="fas fa-desktop text-brand-400 text-xs"></i>
+                                <span id="chipPadreTexto" class="text-xs font-black text-brand-300 truncate flex-1"></span>
+                                <button type="button" onclick="limpiarPadre()" class="text-brand-400 hover:text-white text-xs"><i class="fas fa-times"></i></button>
+                            </div>
+                            <p id="sinPadreTexto" class="text-[10px] text-slate-500 font-bold mt-2">Sin equipo principal asignado</p>
+                            <!-- Hidden real que va al controller -->
+                            <input type="hidden" name="id_padre_activo" id="id_padre_activo_hidden">
+                            <!-- Datos de padres en JSON para búsqueda client-side -->
+                            <script>
+                                const PADRES_DATA = <?= json_encode(array_values($data['padres'])) ?>;
+                            </script>
                         </div>
 
                         <div class="bg-white rounded-[2.5rem] border-2 border-slate-200 p-8 shadow-sm">
                             <label class="label-ruby">Estado Inicial</label>
                             <div class="input-group-ruby">
-                                <select name="estado" class="input-ruby"><option value="Bueno">Bueno</option><option value="Malo">Malo</option><option value="Reparacion">En Reparación</option></select>
+                                <select name="estado" class="input-ruby"><option value="Bueno">Bueno</option><option value="Malo">Averiado</option><option value="Reparacion">En Reparación</option></select>
                             </div>
                         </div>
 
@@ -230,6 +276,13 @@ $data = ActivoController::getFormData();
 
     <script src="../assets/js/sidebar_logic.js"></script>
     <script>
+        // Construye las opciones de marcas para los selects de accesorios
+        const MARCAS_OPTIONS = `<option value="">— Misma del equipo</option>` +
+            <?= json_encode(implode('', array_map(fn($m) => 
+                "<option value=\"{$m['id_marca']}\">{$m['nom_marca']}</option>",
+                $data['marcas']
+            ))) ?>;
+
         // Función para añadir accesorios a la tabla
         function addAccessory() {
             const select = document.getElementById('quickAdd');
@@ -239,12 +292,24 @@ $data = ActivoController::getFormData();
             const tbody = document.querySelector('#tablaAccesorios tbody');
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="py-4 px-2"><input type="hidden" class="acc-id" value="${id}"><span class="text-xs font-black text-brand-500 uppercase">${nombre}</span></td>
-                <td class="py-4 px-2 space-y-2">
-                    <input type="text" class="acc-serial block w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] text-white font-mono outline-none" placeholder="Serial">
-                    <input type="text" class="acc-ref block w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] text-slate-400 outline-none" placeholder="Ref">
+                <td class="py-4 px-2">
+                    <input type="hidden" class="acc-id" value="${id}">
+                    <span class="text-xs font-black text-brand-500 uppercase">${nombre}</span>
                 </td>
-                <td class="py-4 text-right"><button type="button" class="text-slate-500 hover:text-brand-600 p-2" onclick="this.closest('tr').remove()"><i class="fas fa-trash-alt text-xs"></i></button></td>
+                <td class="py-4 px-2">
+                    <select class="acc-marca w-full acc-input rounded-lg px-2 py-1.5 text-[11px] outline-none cursor-pointer">
+                        ${MARCAS_OPTIONS}
+                    </select>
+                </td>
+                <td class="py-4 px-2 space-y-2">
+                    <input type="text" class="acc-serial acc-input block w-full rounded-lg px-3 py-1.5 text-[11px] font-mono outline-none" placeholder="Serial">
+                    <input type="text" class="acc-ref acc-input block w-full rounded-lg px-3 py-1.5 text-[11px] outline-none" placeholder="Ref">
+                </td>
+                <td class="py-4 text-right">
+                    <button type="button" class="text-slate-500 hover:text-brand-600 p-2" onclick="this.closest('tr').remove()">
+                        <i class="fas fa-trash-alt text-xs"></i>
+                    </button>
+                </td>
             `;
             tbody.appendChild(row);
             select.value = "";
@@ -380,6 +445,7 @@ $data = ActivoController::getFormData();
                 // Enviar el tipo de equipo seleccionado para asociar la marca correctamente
                 const tipoSeleccionado = document.getElementById('selectTipo')?.value || 0;
                 fd.append('id_tipo', tipoSeleccionado);
+                fd.append('csrf_token', CSRF_TOKEN);
                 const res  = await fetch('../controllers/parametrosController.php', { method: 'POST', body: fd });
                 const data = await res.json();
                 if (data.success && data.id) {
@@ -402,8 +468,9 @@ $data = ActivoController::getFormData();
             const accesorios = [];
             document.querySelectorAll('#tablaAccesorios tbody tr').forEach(tr => {
                 accesorios.push({
-                    tipo_id: tr.querySelector('.acc-id').value,
-                    serial: tr.querySelector('.acc-serial').value,
+                    tipo_id:    tr.querySelector('.acc-id').value,
+                    marca_id:   tr.querySelector('.acc-marca').value,   // '' = usar la del activo principal
+                    serial:     tr.querySelector('.acc-serial').value,
                     referencia: tr.querySelector('.acc-ref').value
                 });
             });
@@ -583,21 +650,109 @@ $data = ActivoController::getFormData();
             }
         }
 
+        // Filtra las opciones del selector de modelo según tipo Y marca actualmente seleccionados.
+        // Muestra el bloque "col-modelo" si hay al menos un modelo disponible para esa combinación.
+        function filtrarModelos() {
+            const idTipo  = document.getElementById('selectTipo').value;
+            const idMarca = document.getElementById('selectMarca').value;
+            const sel     = document.getElementById('selector-modelo');
+
+            let visibles = 0;
+            for (const opt of sel.options) {
+                if (opt.value === '') { opt.style.display = ''; continue; } // opción genérica siempre visible
+                const matchTipo  = !idTipo  || opt.dataset.tipo  === idTipo;
+                const matchMarca = !idMarca || opt.dataset.marca === idMarca;
+                const visible    = matchTipo && matchMarca;
+                opt.style.display = visible ? '' : 'none';
+                if (visible) visibles++;
+            }
+
+            // Si el modelo actualmente seleccionado quedó oculto, resetear a genérico
+            const selOpt = sel.options[sel.selectedIndex];
+            if (selOpt && selOpt.style.display === 'none') sel.value = '';
+
+            // Mostrar el bloque solo si hay modelos disponibles para la combinación
+            document.getElementById('col-modelo').style.display = visibles > 0 ? 'block' : 'none';
+        }
+
         function toggleCampos() {
             var select = document.getElementById("selectTipo");
             var idTipo = select.value;
 
-            // Mostrar/ocultar modelo
+            // Filtrar modelos por tipo + marca (también oculta el bloque si no hay coincidencias)
+            filtrarModelos();
+
+            // Mostrar selector de equipo padre solo si NO es un tipo "principal"
             const nombreTipo = (select.options[select.selectedIndex]?.getAttribute("data-nombre") || "").toUpperCase();
-            const esPC = ["TABLET","COMPUTADOR","PORTATIL","PC","SERVIDOR","AIO"].some(t => nombreTipo.includes(t));
-            document.getElementById("col-modelo").style.display = esPC ? "block" : "none";
+            const esPrincipal = ["TABLET","COMPUTADOR","PORTATIL","PC","SERVIDOR","AIO"].some(t => nombreTipo.includes(t));
+            document.getElementById("grupo-padre").style.display = esPrincipal ? "none" : "block";
 
-            // Mostrar equipo padre si no es tipo principal
-            document.getElementById("grupo-padre").style.display = esPC ? "none" : "block";
-
-            // Cargar campos dinámicos
+            // Cargar campos dinámicos del tipo seleccionado
             if (idTipo) cargarCamposTipo(idTipo);
         }
+
+        // ── BUSCADOR DE EQUIPO PADRE ──────────────────────────────────────────
+        function filtrarPadres(q) {
+            const dropdown = document.getElementById('dropdownPadre');
+            const lista    = document.getElementById('listaPadre');
+            const texto    = q.trim().toLowerCase();
+
+            if (!texto) { dropdown.classList.add('hidden'); return; }
+
+            const coincidencias = PADRES_DATA.filter(p => {
+                const h = (p.hostname   || '').toLowerCase();
+                const r = (p.referencia || '').toLowerCase();
+                const s = (p.serial     || '').toLowerCase();
+                return h.includes(texto) || r.includes(texto) || s.includes(texto);
+            }).slice(0, 8);
+
+            if (!coincidencias.length) {
+                lista.innerHTML = `<p class="text-[10px] text-slate-500 px-4 py-3 font-bold">Sin resultados</p>`;
+            } else {
+                lista.innerHTML = coincidencias.map(p => {
+                    const label = p.hostname + (p.referencia ? ` — ${p.referencia}` : '');
+                    return `<button type="button"
+                        class="w-full text-left px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                        onclick="seleccionarPadre(${p.id_activo}, '${label.replace(/'/g,"\\'")}')">
+                        <i class="fas fa-desktop text-brand-400 text-xs"></i>
+                        <span>${label}</span>
+                    </button>`;
+                }).join('');
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        function seleccionarPadre(id, label) {
+            document.getElementById('id_padre_activo_hidden').value = id;
+            document.getElementById('buscarPadre').value            = '';
+            document.getElementById('dropdownPadre').classList.add('hidden');
+            document.getElementById('chipPadreTexto').textContent   = label;
+            document.getElementById('chipPadre').classList.remove('hidden');
+            document.getElementById('chipPadre').classList.add('flex');
+            document.getElementById('sinPadreTexto').classList.add('hidden');
+        }
+
+        function limpiarPadre() {
+            document.getElementById('id_padre_activo_hidden').value = '';
+            document.getElementById('buscarPadre').value            = '';
+            document.getElementById('dropdownPadre').classList.add('hidden');
+            document.getElementById('chipPadre').classList.add('hidden');
+            document.getElementById('chipPadre').classList.remove('flex');
+            document.getElementById('sinPadreTexto').classList.remove('hidden');
+        }
+
+        // Cerrar dropdown al hacer clic fuera
+        document.addEventListener('click', e => {
+            if (!e.target.closest('#grupo-padre')) {
+                document.getElementById('dropdownPadre')?.classList.add('hidden');
+            }
+        });
+
+        // Cuando cambia la marca, re-filtrar modelos sin recargar campos
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('selectMarca').addEventListener('change', filtrarModelos);
+            toggleCampos(); // inicializar estado del formulario
+        });
 
         async function buscarEmpleado() {
             const id = document.getElementById('input-responsable').value.trim();
@@ -614,11 +769,10 @@ $data = ActivoController::getFormData();
                 } else {
                     document.getElementById('nom_nuevo_empleado').value = "";
                     document.getElementById('nom_nuevo_empleado').readOnly = false;
-                    document.getElementById('alerta-empleado').innerHTML = "Custodio Nuevo";
+                    document.getElementById('alerta-empleado').innerHTML = "Usuario Nuevo";
                 }
             } finally { document.getElementById('icon-search').className = 'fas fa-search'; }
         }
-        document.addEventListener('DOMContentLoaded', toggleCampos);
     </script>
     <script src="../assets/js/dark_mode.js"></script>
 </body>

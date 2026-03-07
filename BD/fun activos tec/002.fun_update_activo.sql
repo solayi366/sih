@@ -25,7 +25,7 @@ BEGIN
         ip_equipo           = p_ip,
         id_tipoequi         = COALESCE(p_tipo,     id_tipoequi),
         id_marca            = COALESCE(p_marca,    id_marca),
-        id_modelo           = p_modelo,
+        id_modelo           = COALESCE(p_modelo, id_modelo),
         estado              = COALESCE(p_estado,   estado),
         cod_nom_responsable = COALESCE(p_resp,     cod_nom_responsable),
         id_padre_activo     = p_padre,

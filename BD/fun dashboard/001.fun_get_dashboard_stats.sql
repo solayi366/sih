@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION fun_get_dashboard_stats()
 RETURNS TABLE (
     total_activos BIGINT,
@@ -6,7 +5,7 @@ RETURNS TABLE (
     operativos BIGINT,
     atencion BIGINT,
     json_estados JSON,
-    json_marcas JSON
+    json_tipos JSON
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -23,13 +22,15 @@ BEGIN
             FROM tab_activotec WHERE activo = TRUE GROUP BY estado
         ) t) as j_estados,
         
-        -- Agregación de Marcas (Top 5)
-        (SELECT COALESCE(json_agg(m_row), '[]'::json) FROM (
-            SELECT m.nom_marca as label, count(*)::int as count 
-            FROM tab_activotec a 
-            INNER JOIN tab_marca m ON a.id_marca = m.id_marca 
-            WHERE a.activo = TRUE 
-            GROUP BY m.nom_marca ORDER BY count DESC LIMIT 5
-        ) m_row) as j_marcas;
+        -- Cantidad por tipo de dispositivo (Tablet, Portátil, Computador, Todo en Uno)
+        (SELECT COALESCE(json_agg(t_row), '[]'::json) FROM (
+            SELECT ti.nom_tipo as label, count(*)::int as count
+            FROM tab_activotec a
+            INNER JOIN tab_tipos ti ON a.id_tipoequi = ti.id_tipoequi
+            WHERE a.activo = TRUE
+              AND LOWER(ti.nom_tipo) IN ('tablet', 'portatil', 'portátil', 'computador', 'todo en uno')
+            GROUP BY ti.nom_tipo
+            ORDER BY count DESC
+        ) t_row) as j_tipos;
 END;
 $$ LANGUAGE plpgsql;

@@ -1,5 +1,6 @@
 <?php
 require_once '../controllers/parametrosController.php';
+require_once '../core/Csrf.php';
 $tipos  = ParametrosController::getTipos();
 $campos = ParametrosController::getTodosCampos();
 ?>
@@ -182,6 +183,7 @@ $campos = ParametrosController::getTodosCampos();
                 <button onclick="cerrarModal('modalCrear')" class="text-white/50 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"><i class="fas fa-times text-sm"></i></button>
             </div>
             <form action="../controllers/parametrosController.php?ent=tipo&action=create" method="POST">
+                    <?= Csrf::field() ?>
                 <div class="p-5">
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nombre del Dispositivo</label>
                     <input type="text" name="nom_tipo" placeholder="Ej: Celular, Drone, Cámara IP..." required
@@ -203,6 +205,7 @@ $campos = ParametrosController::getTodosCampos();
                 <button onclick="cerrarModal('modalEdicion')" class="text-white/50 hover:text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"><i class="fas fa-times text-sm"></i></button>
             </div>
             <form action="../controllers/parametrosController.php?ent=tipo&action=update" method="POST">
+                    <?= Csrf::field() ?>
                 <input type="hidden" name="id_tipo" id="edit_id">
                 <div class="p-5">
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nombre</label>
@@ -431,12 +434,12 @@ $campos = ParametrosController::getTodosCampos();
         const idCampo = parseInt(checkbox.dataset.id);
         const activo  = checkbox.checked;
         const conf    = camposDelTipo[idCampo] || {};
-        const body    = new URLSearchParams({action:'toggleCampo',id_tipo:tipoActivo,id_campo:idCampo,activo:activo?'1':'0',requerido:conf.requerido?'1':'0',orden:conf.orden||99});
+        const body    = new URLSearchParams({action:'toggleCampo',id_tipo:tipoActivo,id_campo:idCampo,activo:activo?'1':'0',requerido:conf.requerido?'1':'0',orden:conf.orden||99,csrf_token:CSRF_TOKEN});
         try {
             const res  = await fetch('../controllers/parametrosController.php',{method:'POST',body});
             const data = await res.json();
             if (data.success) { if(activo) camposDelTipo[idCampo]={requerido:false,orden:99}; else delete camposDelTipo[idCampo]; renderCampos(); }
-            else { checkbox.checked=!activo; Swal.fire('Error',data.msg,'error'); }
+            else { checkbox.checked=!activo; Alerts.error('Error',data.msg); }
         } catch(e) { checkbox.checked=!activo; }
     }
 
@@ -453,11 +456,11 @@ $campos = ParametrosController::getTodosCampos();
         const idCampo   = parseInt(document.getElementById('mcc-id-campo').value);
         const requerido = document.getElementById('mcc-requerido').checked;
         const orden     = parseInt(document.getElementById('mcc-orden').value) || 10;
-        const body      = new URLSearchParams({action:'toggleCampo',id_tipo:tipoActivo,id_campo:idCampo,activo:'1',requerido:requerido?'1':'0',orden});
+        const body      = new URLSearchParams({action:'toggleCampo',id_tipo:tipoActivo,id_campo:idCampo,activo:'1',requerido:requerido?'1':'0',orden,csrf_token:CSRF_TOKEN});
         const res  = await fetch('../controllers/parametrosController.php',{method:'POST',body});
         const data = await res.json();
         if (data.success) { camposDelTipo[idCampo]={requerido,orden}; cerrarModal('modalCampoConfig'); renderCampos(); }
-        else Swal.fire('Error',data.msg,'error');
+        else Alerts.error('Error',data.msg);
     }
 
     async function crearCampo() {
@@ -466,23 +469,23 @@ $campos = ParametrosController::getTodosCampos();
         const tipo_dato = document.querySelector('input[name="nc_tipo_dato"]:checked')?.value||'texto';
         const icono     = document.querySelector('input[name="nc_icono"]:checked')?.value||'fa-tag';
         const opcionesRaw = document.getElementById('nc_opciones').value.trim();
-        if (!etiqueta||!nombre) return Swal.fire('Atención','Completa etiqueta y nombre técnico','warning');
-        if (!/^[a-z0-9_]+$/i.test(nombre)) return Swal.fire('Atención','El nombre técnico solo puede tener letras, números y _','warning');
+        if (!etiqueta||!nombre) return Alerts.warning('Atención','Completa etiqueta y nombre técnico');
+        if (!/^[a-z0-9_]+$/i.test(nombre)) return Alerts.warning('Atención','El nombre técnico solo puede tener letras, números y _');
         let opciones = null;
         if (tipo_dato==='lista') {
             const arr = opcionesRaw.split('\n').map(s=>s.trim()).filter(Boolean);
-            if (arr.length<2) return Swal.fire('Atención','Agrega al menos 2 opciones','warning');
+            if (arr.length<2) return Alerts.warning('Atención','Agrega al menos 2 opciones');
             opciones = JSON.stringify(arr);
         }
-        const body = new URLSearchParams({action:'crearCampo',etiqueta,nombre,tipo_dato,icono,opciones:opciones||''});
+        const body = new URLSearchParams({action:'crearCampo',etiqueta,nombre,tipo_dato,icono,opciones:opciones||'',csrf_token:CSRF_TOKEN});
         const res  = await fetch('../controllers/parametrosController.php',{method:'POST',body});
         const data = await res.json();
         if (data.success) {
             TODOS_LOS_CAMPOS.push({id_campo:data.id,nombre,etiqueta,tipo_dato,icono,opciones,is_base:false,orden:99});
             cerrarModal('modalNuevoCampo');
             renderCampos();
-            Swal.fire({title:'¡Campo creado!',icon:'success',timer:2000,showConfirmButton:false});
-        } else Swal.fire('Error',data.msg,'error');
+            Alerts.success('¡Campo creado!');
+        } else Alerts.error('Error',data.msg);
     }
 
     function autoNombre() {

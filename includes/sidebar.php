@@ -7,14 +7,21 @@ $inicial_usuario = strtoupper(substr($usuario_nombre, 0, 1));
 $page_titles = [
     'dashboard.php'           => 'Métricas',
     'activos.php'             => 'Inventario',
-    'crear_activo.php'        => 'Nuevo Activo',
-    'editar.php'              => 'Editar Activo',
+    'crear_activo.php'        => 'Nuevo Elemento',
+    'editar.php'              => 'Editar Elemento',
     'ver.php'                 => 'Ficha Técnica',
     'novedades.php'           => 'Mesa de Ayuda',
+    'celulares.php'           => 'Celulares',
+    'celular_crear.php'       => 'Nuevo Celular',
+    'celular_editar.php'      => 'Editar Celular',
+    'celular_ver.php'         => 'Ficha Celular',
+    'celular_importar.php'    => 'Importar Celulares',
+    'parametros_cel_marcas.php'  => 'Marcas Celular',
+    'parametros_cel_modelos.php' => 'Modelos Celular',
     'regenerar_qr.php'        => 'Regenerar QR',
     'exportar.php'            => 'Exportar',
     'parametros_areas.php'    => 'Áreas',
-    'parametros_empleados.php'=> 'Custodios',
+    'parametros_empleados.php'=> 'Usuarios',
     'parametros_marcas.php'   => 'Marcas',
     'parametros_modelos.php'  => 'Modelos',
     'parametros_tipos.php'    => 'Tipos',
@@ -26,7 +33,8 @@ function isActive($page, $current_page) {
         ? 'bg-brand-50 text-brand-700'
         : 'text-slate-600 hover:bg-slate-50 hover:text-brand-700';
 }
-$is_param_page = strpos($current_page, 'parametros_') !== false;
+$is_param_page    = strpos($current_page, 'parametros_') !== false;
+$is_cel_param_page = strpos($current_page, 'parametros_cel_') !== false;
 ?>
 
 <!-- ══ OVERLAY MÓVIL ══════════════════════════════════════════════ -->
@@ -113,23 +121,19 @@ $is_param_page = strpos($current_page, 'parametros_') !== false;
     <!-- Navegación -->
     <nav class="flex-1 overflow-y-auto no-scrollbar py-4 space-y-1 px-3">
         <p class="section-title px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-2">Principal</p>
-        <a href="activos.php"
+
+        <a href="dashboard.php"
+           class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('dashboard.php', $current_page); ?>">
+            <i class="fas fa-chart-pie nav-icon w-6 text-center"></i>
+            <span class="sidebar-text ml-3">Dashboard</span>
+        </a>
+                <a href="activos.php"
            class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('activos.php', $current_page); ?>">
             <i class="fas fa-layer-group nav-icon w-6 text-center"></i>
             <span class="sidebar-text ml-3">Inventario</span>
         </a>
-        <a href="dashboard.php"
-           class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('dashboard.php', $current_page); ?>">
-            <i class="fas fa-chart-pie nav-icon w-6 text-center"></i>
-            <span class="sidebar-text ml-3">Métricas</span>
-        </a>
 
         <p class="section-title px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-6">Gestión</p>
-        <a href="crear_activo.php"
-           class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('crear_activo.php', $current_page); ?>">
-            <i class="fas fa-plus-circle nav-icon w-6 text-center"></i>
-            <span class="sidebar-text ml-3">Nuevo Activo</span>
-        </a>
 
         <div class="space-y-1">
             <button onclick="toggleSubmenu('submenu-params')"
@@ -145,24 +149,48 @@ $is_param_page = strpos($current_page, 'parametros_') !== false;
                 <a href="parametros_marcas.php"    class="block py-2 text-xs font-bold text-slate-400 hover:text-brand-600">Marcas</a>
                 <a href="parametros_modelos.php"   class="block py-2 text-xs font-bold text-slate-400 hover:text-brand-600">Modelos</a>
                 <a href="parametros_areas.php"     class="block py-2 text-xs font-bold text-slate-400 hover:text-brand-600">Áreas</a>
-                <a href="parametros_empleados.php" class="block py-2 text-xs font-bold text-slate-400 hover:text-brand-600">Custodios</a>
+                <a href="parametros_empleados.php" class="block py-2 text-xs font-bold text-slate-400 hover:text-brand-600">Usuarios</a>
             </div>
         </div>
-
-        <a href="novedades.php"
+   <a href="novedades.php"
            class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('novedades.php', $current_page); ?>">
             <i class="fas fa-headset nav-icon w-6 text-center"></i>
             <span class="sidebar-text ml-3">Mesa de Ayuda</span>
         </a>
 
-        <p class="section-title px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-6">Herramientas</p>
         <a href="regenerar_qr.php"
            class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('regenerar_qr.php', $current_page); ?>">
             <i class="fas fa-qrcode nav-icon w-6 text-center"></i>
             <span class="sidebar-text ml-3">Regenerar QR</span>
         </a>
-    </nav>
 
+
+        <!-- Submenú Celulares -->
+                 <p class="section-title px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-6">Celulares</p>
+
+                 <a href="celulares.php"
+           class="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all <?php echo isActive('celulares.php', $current_page); ?>">
+            <i class="fas fa-mobile-screen-button nav-icon w-6 text-center"></i>
+            <span class="sidebar-text ml-3">Celulares</span>
+        </a>
+        <div class="space-y-1">
+            <button onclick="toggleSubmenu('submenu-cel-params')"
+                    class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all">
+                <div class="flex items-center">
+                    <i class="fas fas fa-tools nav-icon w-6 text-center"></i>
+                    <span class="sidebar-text ml-3">Config. Celulares</span>
+                </div>
+                <i id="arrow-cel-params" class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_cel_param_page ? 'rotate-180' : ''; ?>"></i>
+            </button>
+            <div id="submenu-cel-params" class="<?php echo $is_cel_param_page ? '' : 'hidden'; ?> pl-10 space-y-1">
+                <a href="parametros_cel_marcas.php"  class="block py-2 text-xs font-bold <?php echo ($current_page=='parametros_cel_marcas.php')  ? 'text-brand-600' : 'text-slate-400 hover:text-brand-600'; ?>">Marcas</a>
+                <a href="parametros_cel_modelos.php" class="block py-2 text-xs font-bold <?php echo ($current_page=='parametros_cel_modelos.php') ? 'text-brand-600' : 'text-slate-400 hover:text-brand-600'; ?>">Modelos</a>
+            </div>
+        </div>
+
+
+
+             
     <!-- Footer usuario -->
     <div class="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
         <div class="flex items-center gap-3">
@@ -183,6 +211,8 @@ $is_param_page = strpos($current_page, 'parametros_') !== false;
 <script>
 function toggleSubmenu(id) {
     document.getElementById(id).classList.toggle('hidden');
-    document.getElementById('arrow-params').classList.toggle('rotate-180');
+    const arrowMap = { 'submenu-params': 'arrow-params', 'submenu-cel-params': 'arrow-cel-params' };
+    const arrowId  = arrowMap[id];
+    if (arrowId) document.getElementById(arrowId).classList.toggle('rotate-180');
 }
 </script>

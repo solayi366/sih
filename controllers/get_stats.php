@@ -21,7 +21,7 @@ try {
         'operativos' => $stats['operativos'],
         'atencion' => $stats['atencion'],
         'estados' => json_decode($stats['json_estados']),
-        'marcas' => json_decode($stats['json_marcas'])
+        'tipos' => json_decode($stats['json_tipos'])
     ]);
 
 } catch (Exception $e) {

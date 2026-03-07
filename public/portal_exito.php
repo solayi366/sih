@@ -38,7 +38,7 @@
             Número de ticket: <span class="font-mono font-black text-slate-700">#<?= $ticket ?></span>
         </p>
         <?php endif; ?>
-        <p class="text-slate-400 text-xs mb-8">El equipo de tecnología ya recibió la notificación.</p>
+        <p class="text-slate-400 text-xs mb-8">El equipo de tecnología ya recibió la notificación y se pondra en contacto con usted cuando tengamos una solucion a su novedad.</p>
 
         <a href="portal_reportes.php"
            class="block w-full py-4 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-slate-700 transition-all">

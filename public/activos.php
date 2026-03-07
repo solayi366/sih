@@ -89,37 +89,37 @@ function qStr(array $over = []): string {
         /* ── Dark mode: activos.php específico ── */
         /* Contenedor principal barra filtros + tabla */
         .dark .bg-white.rounded-2xl,
-        .dark .bg-white.rounded-3xl { background-color: #1e293b !important; border-color: #334155 !important; }
+        .dark .bg-white.rounded-3xl { background-color: rgba(16,14,24,0.90) !important; border-color: rgba(255,255,255,0.07) !important; }
         /* Thead */
         .dark .bg-slate-50\/80,
-        .dark .bg-slate-50\/50 { background-color: #273549 !important; }
+        .dark .bg-slate-50\/50 { background-color: rgba(22,18,34,0.85) !important; }
         /* Filas hover */
-        .dark .hover\:bg-slate-50:hover { background-color: #273549 !important; }
+        .dark .hover\:bg-slate-50:hover { background-color: rgba(22,18,34,0.85) !important; }
         /* Panel periféricos desplegable */
-        .dark .bg-slate-50\/80.border-t { background-color: #1a2535 !important; border-color: #334155 !important; }
+        .dark .bg-slate-50\/80.border-t { background-color: rgba(14,12,22,0.90) !important; border-color: rgba(255,255,255,0.07) !important; }
         /* Card periférico individual */
-        .dark .bg-white.rounded-xl { background-color: #273549 !important; border-color: #334155 !important; }
+        .dark .bg-white.rounded-xl { background-color: rgba(22,18,34,0.85) !important; border-color: rgba(255,255,255,0.07) !important; }
         /* Icono tipo equipo en tabla */
-        .dark .bg-slate-100.rounded-xl { background-color: #273549 !important; }
+        .dark .bg-slate-100.rounded-xl { background-color: rgba(22,18,34,0.85) !important; }
         /* Badge marca */
-        .dark .bg-slate-100.text-slate-600 { background-color: #273549 !important; color: #94a3b8 !important; }
+        .dark .bg-slate-100.text-slate-600 { background-color: rgba(22,18,34,0.85) !important; color: #94a3b8 !important; }
         /* Badge periféricos count */
-        .dark .bg-slate-100.text-slate-700 { background-color: #273549 !important; color: #94a3b8 !important; }
+        .dark .bg-slate-100.text-slate-700 { background-color: rgba(22,18,34,0.85) !important; color: #94a3b8 !important; }
         /* Botones acción (ver/editar) */
         .dark .hover\:bg-slate-100 { --tw-bg-opacity: 1; }
-        .dark .hover\:bg-slate-100:hover { background-color: #273549 !important; }
+        .dark .hover\:bg-slate-100:hover { background-color: rgba(22,18,34,0.85) !important; }
         /* Input buscador */
-        .dark .bg-slate-50.border.border-slate-200 { background-color: #273549 !important; border-color: #334155 !important; color: #f1f5f9 !important; }
-        .dark .focus\:bg-white:focus { background-color: #1e293b !important; }
+        .dark .bg-slate-50.border.border-slate-200 { background-color: rgba(22,18,34,0.85) !important; border-color: rgba(255,255,255,0.07) !important; color: #f1f5f9 !important; }
+        .dark .focus\:bg-white:focus { background-color: rgba(16,14,24,0.90) !important; }
         /* Paginación */
-        .dark .bg-slate-100.text-slate-700 { background-color: #273549 !important; color: #94a3b8 !important; }
+        .dark .bg-slate-100.text-slate-700 { background-color: rgba(22,18,34,0.85) !important; color: #94a3b8 !important; }
         /* Modal QR interno */
-        .dark .bg-white.rounded-3xl { background-color: #1e293b !important; }
-        .dark .bg-slate-100.hover\:bg-slate-200 { background-color: #273549 !important; }
-        .dark .h-px.bg-slate-100 { background-color: #334155 !important; }
+        .dark .bg-white.rounded-3xl { background-color: rgba(16,14,24,0.90) !important; }
+        .dark .bg-slate-100.hover\:bg-slate-200 { background-color: rgba(22,18,34,0.85) !important; }
+        .dark .h-px.bg-slate-100 { background-color: rgba(255,255,255,0.07) !important; }
         /* Divider border-b */
-        .dark .border-b.border-slate-100 { border-color: #334155 !important; }
-        .dark .divide-y.divide-slate-100 > * + * { border-color: #334155 !important; }
+        .dark .border-b.border-slate-100 { border-color: rgba(255,255,255,0.07) !important; }
+        .dark .divide-y.divide-slate-100 > * + * { border-color: rgba(255,255,255,0.07) !important; }
     </style>
     <link rel="stylesheet" href="../assets/css/dark_mode.css">
 </head>
@@ -140,7 +140,7 @@ function qStr(array $over = []): string {
                         <!-- Título -->
                         <div class="flex-1 min-w-0">
                             <h1 class="text-base font-extrabold text-slate-900 tracking-tight leading-none">
-                                Inventario de Activos
+                                Inventario de Elementos Tecnológicos
                             </h1>
                             <p class="text-slate-400 text-[11px] font-medium mt-0.5 truncate">
                                 <?php if ($buscar !== ''): ?>
@@ -148,7 +148,7 @@ function qStr(array $over = []): string {
                                         <?= $res['total_registros'] ?> resultado(s) para "<em><?= htmlspecialchars($buscar) ?></em>"
                                     </span>
                                 <?php else: ?>
-                                    Activos principales y periféricos asociados.
+                                    Elementos tecnológicos principales y periféricos asociados.
                                 <?php endif; ?>
                             </p>
                         </div>
@@ -193,7 +193,7 @@ function qStr(array $over = []): string {
                             <!-- Botón nuevo -->
                             <a href="crear_activo.php"
                                class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm transition-all"
-                               title="Nuevo Activo">
+                               title="Nuevo Elemento Tecnológico">
                                 <i class="fas fa-plus text-xs"></i>
                             </a>
                         </div>
@@ -285,7 +285,7 @@ function qStr(array $over = []): string {
                             <tr>
                                 <td colspan="7" class="px-6 py-16 text-center text-slate-400">
                                     <i class="fas fa-magnifying-glass text-4xl mb-3 block opacity-30"></i>
-                                    No se encontraron activos con los filtros aplicados.
+                                    No se encontraron elementos tecnológicos con los filtros aplicados.
                                 </td>
                             </tr>
                         <?php endif; ?>
@@ -416,7 +416,7 @@ function qStr(array $over = []): string {
                 <div class="mt-4 flex flex-col xs:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center xs:text-left">
                         Pág. <span class="text-brand-600"><?= $page ?></span> / <?= $total_pages ?>
-                        &nbsp;·&nbsp; <?= $res['total_registros'] ?> activos
+                        &nbsp;·&nbsp; <?= $res['total_registros'] ?> elementos tecnológicos
                     </div>
                     <div class="flex gap-2">
                         <a href="<?= qStr(['page' => max(1, $page-1)]) ?>"
@@ -476,7 +476,7 @@ function qStr(array $over = []): string {
                 </div>
                 <div>
                     <h2 class="font-black text-slate-900 text-lg leading-none">Exportar a Excel</h2>
-                    <p class="text-slate-400 text-xs mt-0.5">Selecciona los tipos de activo a exportar</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Selecciona los tipos de elemento tecnológico a exportar</p>
                 </div>
             </div>
 
@@ -489,7 +489,7 @@ function qStr(array $over = []): string {
                            class="w-5 h-5 accent-emerald-600 rounded">
                     <span class="flex items-center gap-2 font-bold text-slate-700 text-sm">
                         <i class="fas fa-layer-group text-slate-400 group-hover:text-emerald-500 transition"></i>
-                        Todos los activos principales
+                        Todos los elementos tecnológicos principales
                     </span>
                 </label>
 

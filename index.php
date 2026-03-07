@@ -164,10 +164,32 @@ if (isset($_SESSION['user_id'])) {
             to{opacity:1;transform:translateY(0) scale(1)}
         }
 
+        .btn-manual {
+            position:fixed;bottom:1.5rem;right:1.5rem;z-index:10;
+            display:flex;align-items:center;gap:.5rem;
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.12);
+            border-radius:50px;padding:.55rem 1rem;
+            color:rgba(255,255,255,.55);
+            text-decoration:none;font-family:'Plus Jakarta Sans',sans-serif;
+            font-size:.72rem;font-weight:700;letter-spacing:.04em;
+            backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+            transition:all .25s ease;
+        }
+        .btn-manual:hover {
+            background:rgba(255,255,255,.12);
+            border-color:rgba(255,255,255,.25);
+            color:#fff;
+            box-shadow:0 8px 24px rgba(0,0,0,.3);
+            transform:translateY(-2px);
+        }
+        .btn-manual i { font-size:.7rem; }
+
         @media (max-width:480px) {
             html,body{overflow:auto;}
             .glass-panel{padding:2rem 1.5rem;}
             h1{font-size:1.4rem;}
+            .btn-manual{bottom:1rem;right:1rem;}
         }
     </style>
 </head>
@@ -201,7 +223,7 @@ if (isset($_SESSION['user_id'])) {
                 <div class="card-body">
                     <div class="card-tag">Personal TI</div>
                     <div class="card-title">Panel de Administración</div>
-                    <div class="card-desc">Gestiona activos, inventario y novedades</div>
+                    <div class="card-desc">Gestiona elementos tecnológicos, inventario y novedades</div>
                 </div>
                 <div class="card-chevron"><i class="fas fa-chevron-right"></i></div>
             </a>
@@ -210,7 +232,7 @@ if (isset($_SESSION['user_id'])) {
                 <div class="card-icon"><i class="fas fa-triangle-exclamation"></i></div>
                 <div class="card-body">
                     <div class="card-tag">Usuarios</div>
-                    <div class="card-title">Reportar un Problema</div>
+                    <div class="card-title">Reportar una Novedad</div>
                     <div class="card-desc">Reporta fallas sin necesidad de iniciar sesión</div>
                 </div>
                 <div class="card-chevron"><i class="fas fa-chevron-right"></i></div>
@@ -225,6 +247,10 @@ if (isset($_SESSION['user_id'])) {
 
     </div>
 </div>
+
+<a href="https://envia06.com/sih_qr/documentos/Manual.pdf" target="_blank" class="btn-manual">
+    <i class="fas fa-book-open"></i> Manual de Usuario
+</a>
 
 </body>
 </html>

@@ -10,40 +10,34 @@ class ActivosController {
             exit();
         }
 
-        // Parámetros desde la URL
         $page        = isset($_GET['page'])   ? max(1, (int)$_GET['page']) : 1;
         $limit       = 10;
-        $filtro      = isset($_GET['filtro']) && $_GET['filtro'] !== ''   ? trim($_GET['filtro']) : null;
-        $filtro_peri = isset($_GET['peri'])   && $_GET['peri']   !== ''   ? trim($_GET['peri'])   : null;
-        $buscar      = isset($_GET['buscar']) && $_GET['buscar'] !== ''   ? trim($_GET['buscar']) : null;
+        $filtro      = isset($_GET['filtro']) && $_GET['filtro'] !== '' ? trim($_GET['filtro']) : null;
+        $filtro_peri = isset($_GET['peri'])   && $_GET['peri']   !== '' ? trim($_GET['peri'])   : null;
+        $buscar      = isset($_GET['buscar']) && $_GET['buscar'] !== '' ? trim($_GET['buscar']) : null;
 
         try {
             $db = Database::conectar();
 
-            // ── Llamar a la función con filtros reales en PostgreSQL ──────────
+            // ── Una sola query: activos + periféricos como JSON ───────────────
+            // Reemplaza fun_read_activos_filtrado() + N × fun_read_perifericos_por_padre()
             $stmt = $db->prepare(
-                "SELECT * FROM fun_read_activos_filtrado(:pag, :lim, :buscar, :tipo, :peri)"
+                "SELECT * FROM fun_read_activos_con_perifericos(:pag, :lim, :buscar, :tipo, :peri)"
             );
             $stmt->bindParam(':pag',    $page,        PDO::PARAM_INT);
             $stmt->bindParam(':lim',    $limit,       PDO::PARAM_INT);
-            $stmt->bindParam(':buscar', $buscar);   // VARCHAR o NULL
-            $stmt->bindParam(':tipo',   $filtro);   // VARCHAR o NULL
-            $stmt->bindParam(':peri',   $filtro_peri); // VARCHAR o NULL
+            $stmt->bindParam(':buscar', $buscar);
+            $stmt->bindParam(':tipo',   $filtro);
+            $stmt->bindParam(':peri',   $filtro_peri);
             $stmt->execute();
 
             $activos_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // ── Cargar periféricos de cada activo ─────────────────────────────
-            $stmt_peri = $db->prepare(
-                "SELECT * FROM fun_read_perifericos_por_padre(:id_padre)"
-            );
-            $activos = [];
-            foreach ($activos_raw as $activo) {
-                $stmt_peri->bindParam(':id_padre', $activo['r_id'], PDO::PARAM_INT);
-                $stmt_peri->execute();
-                $activo['perifericos'] = $stmt_peri->fetchAll(PDO::FETCH_ASSOC);
-                $activos[] = $activo;
-            }
+            // Deserializar periféricos: la BD devuelve JSON string, PHP necesita array
+            $activos = array_map(function (array $row): array {
+                $row['perifericos'] = json_decode($row['perifericos'] ?? '[]', true) ?: [];
+                return $row;
+            }, $activos_raw);
 
             $total_registros = !empty($activos) ? (int)$activos[0]['total_registros'] : 0;
             $total_pages     = max(1, (int)ceil($total_registros / $limit));
@@ -59,7 +53,7 @@ class ActivosController {
             ];
 
         } catch (Exception $e) {
-            error_log("Error en ActivosController: " . $e->getMessage());
+            error_log("Error en ActivosController::listar: " . $e->getMessage());
             return [
                 'activos'         => [],
                 'page'            => 1,
